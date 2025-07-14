@@ -3,15 +3,17 @@ package dev.shrekback.post.dto;
 import lombok.Getter;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 public class QueryDto {
-    String query;
+    String sortField;
     Boolean asc;
     String id;
     String name;
     String category;
-    String type;
+    String color;
+    private String material;
     String desc;
     Double minPrice;
     Double maxPrice;
@@ -19,5 +21,6 @@ public class QueryDto {
     LocalDate dateFrom;
     LocalDate dateTo;
 }
+
 
 

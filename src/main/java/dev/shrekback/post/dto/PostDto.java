@@ -1,9 +1,6 @@
 package dev.shrekback.post.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,7 +18,7 @@ public class PostDto {
     private String category;
     private String desc;
     private String color;
-    private List<String> materials;
+    private String material;
     private LocalDateTime dateCreated;
 
 

@@ -1,9 +1,6 @@
 package dev.shrekback.post.model;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -17,6 +14,8 @@ import java.util.List;
 @EqualsAndHashCode(of = "id")
 @ToString
 @Document(collection = "shrek-products")
+@AllArgsConstructor
+
 public class Post {
     @Id
     private String id;
@@ -27,16 +26,15 @@ public class Post {
     private String category;
     private String desc;
     private String color;
-    private List<String> materials;
+    private String material;
     private LocalDateTime dateCreated;
 
     public Post() {
         this.dateCreated = LocalDateTime.now();
-        this.imageUrls = new ArrayList<>();
-        this.materials = new ArrayList<>();
+        imageUrls = new ArrayList<>();
     }
 
-    public Post(String name, int quantity, double price, String category, String desc, String color) {
+    public Post(String name, int quantity, double price, String category, String desc, String color,String material) {
         this();
         this.name = name;
         this.quantity = quantity;
@@ -44,6 +42,7 @@ public class Post {
         this.category = category;
         this.desc = desc;
         this.color = color;
+        this.material = material;
     }
 
     public void adjust(Adjustment adjustment) {
@@ -60,15 +59,6 @@ public class Post {
 
     public boolean removePic(String pic) {
         return imageUrls.remove(pic);
-    }
-
-    public boolean addMaterial(String m) {
-        return materials.add(m);
-    }
-
-
-    public boolean removeMaterial(String m) {
-        return materials.remove(m);
     }
 
 }

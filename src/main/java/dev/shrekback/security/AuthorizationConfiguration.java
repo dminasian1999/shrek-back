@@ -33,14 +33,14 @@ public class AuthorizationConfiguration {
                                 "/posts/receipts",
                                 "/posts/criteria/**",
                                 "/posts/type/**",
-                                "/posts/search",
                                 "/post/{id}"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/users/recovery/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/users/recovery/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/users/recovery/**").permitAll()
 
                         // Admin-only endpoints
-                        .requestMatchers(HttpMethod.GET, "/users").permitAll() // Optional: restrict this
+                        .requestMatchers(HttpMethod.POST, "/posts/search").permitAll() // Optional: restrict this
                         .requestMatchers("/users/{username}/roles/{role}")
                         .hasRole(Role.ADMINISTRATOR.name())
 

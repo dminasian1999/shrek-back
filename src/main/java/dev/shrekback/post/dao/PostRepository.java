@@ -20,7 +20,7 @@ public interface PostRepository extends CrudRepository<Post, String> {
 	Stream<Post>findByNameIgnoreCase(String title);
 	Stream<Post> findByIdIn(String [] ids);        // ← “In”, not “Containing”
 	Stream<Post> findByColor(String color);
-	Stream<Post> findByMaterials(String color);
+	Stream<Post> findByMaterial(String color);
 
 
 

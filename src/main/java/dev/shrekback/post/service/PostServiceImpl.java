@@ -8,15 +8,15 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import dev.shrekback.post.dao.PostRepository;
-import dev.shrekback.post.dao.ReceiptRepository;
+import dev.shrekback.post.dao.OrderrRepository;
 import dev.shrekback.post.dto.NewPostDto;
+import dev.shrekback.post.dto.OrderrDto;
 import dev.shrekback.post.dto.PostDto;
 import dev.shrekback.post.dto.QueryDto;
-import dev.shrekback.post.dto.ReceiptDto;
 import dev.shrekback.post.dto.exceptions.PostNotFoundException;
 import dev.shrekback.post.model.Adjustment;
 import dev.shrekback.post.model.Post;
-import dev.shrekback.post.model.Receipt;
+import dev.shrekback.post.model.Orderr;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -40,7 +41,7 @@ public class PostServiceImpl implements PostService {
     private final ModelMapper modelMapper;
     private final MongoTemplate mongoTemplate;
     private final PostRepository postRepository;
-    private final ReceiptRepository receiptRepository;
+    private final OrderrRepository orderrRepository;
 
     @Value("${aws.s3.access.key}")
     private String accessKey;
@@ -129,50 +130,64 @@ public class PostServiceImpl implements PostService {
     public List<PostDto> findPostsWithCriteriaAndSort(QueryDto queryDto) {
         Query mongoQuery = new Query();
 
-        if (queryDto.getId() != null) {
-            mongoQuery.addCriteria(Criteria.where("id").regex(queryDto.getId(), "i"));
+        if (queryDto.getId() != null && !queryDto.getId().isBlank()) {
+            mongoQuery.addCriteria(Criteria.where("id").regex(Pattern.compile(queryDto.getId(), Pattern.CASE_INSENSITIVE)));
         }
-        if (queryDto.getName() != null) {
-            mongoQuery.addCriteria(Criteria.where("name").regex(queryDto.getName(), "i"));
+        if (queryDto.getName() != null && !queryDto.getName().isBlank()) {
+            mongoQuery.addCriteria(Criteria.where("name").regex(Pattern.compile(queryDto.getName(), Pattern.CASE_INSENSITIVE)));
         }
-        if (queryDto.getCategory() != null) {
-            mongoQuery.addCriteria(Criteria.where("category").regex(queryDto.getCategory(), "i"));
+        if (queryDto.getCategory() != null && !queryDto.getCategory().isBlank()) {
+            mongoQuery.addCriteria(Criteria.where("category").regex(Pattern.compile(queryDto.getCategory(), Pattern.CASE_INSENSITIVE)));
         }
-        if (queryDto.getType() != null) {
-            mongoQuery.addCriteria(Criteria.where("type").regex(queryDto.getType(), "i"));
+        if (queryDto.getColor() != null && !queryDto.getColor().isBlank()) {
+            mongoQuery.addCriteria(Criteria.where("color").regex(Pattern.compile(queryDto.getColor(), Pattern.CASE_INSENSITIVE)));
         }
-        if (queryDto.getDesc() != null) {
-            mongoQuery.addCriteria(Criteria.where("desc").regex(queryDto.getDesc(), "i"));
+        if (queryDto.getDesc() != null && !queryDto.getDesc().isBlank()) {
+            mongoQuery.addCriteria(Criteria.where("desc").regex(Pattern.compile(queryDto.getDesc(), Pattern.CASE_INSENSITIVE)));
         }
+
         if (queryDto.getDateFrom() != null) {
-            mongoQuery.addCriteria(Criteria.where("dateCreated").gte(queryDto.getDateFrom()));
+            mongoQuery.addCriteria(Criteria.where("dateCreated").gte(queryDto.getDateFrom().atStartOfDay()));
         }
 
         if (queryDto.getDateTo() != null) {
-            mongoQuery.addCriteria(Criteria.where("dateCreated").lte(queryDto.getDateTo()));
+            mongoQuery.addCriteria(Criteria.where("dateCreated").lte(queryDto.getDateTo().atTime(23, 59, 59)));
         }
 
-        if (queryDto.getMinPrice() != null) {
-            mongoQuery.addCriteria(Criteria.where("sell").gte(queryDto.getMinPrice()));
-        }
-        if (queryDto.getMaxPrice() != null) {
-            mongoQuery.addCriteria(Criteria.where("sell").lte(queryDto.getMaxPrice()));
+        if (queryDto.getMinPrice() != null || queryDto.getMaxPrice() != null) {
+            Criteria priceCriteria = Criteria.where("price");
+
+            if (queryDto.getMinPrice() != null) {
+                priceCriteria = priceCriteria.gte(queryDto.getMinPrice());
+            }
+            if (queryDto.getMaxPrice() != null) {
+                priceCriteria = priceCriteria.lte(queryDto.getMaxPrice()); // or .lt() if exclusive
+            }
+
+            mongoQuery.addCriteria(priceCriteria);
         }
 
 
+        // ✅ Handle List<String> materials
+        if (queryDto.getMaterial() != null && !queryDto.getMaterial().isEmpty()) {
+            mongoQuery.addCriteria(Criteria.where("material").regex(queryDto.getMaterial()));
+        }
+
+        // ✅ Sorting
         Sort.Direction direction = Boolean.TRUE.equals(queryDto.getAsc()) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        if (queryDto.getQuery() != null) {
-            mongoQuery.with(Sort.by(direction, queryDto.getQuery()));
-        } else {
-            mongoQuery.with(Sort.by(direction, "name"));
 
-        }
+        String sortField = (queryDto.getSortField() != null && !queryDto.getSortField().trim().isEmpty())
+                ? queryDto.getSortField()
+                : "dateCreated";
+
+        mongoQuery.with(Sort.by(direction, sortField));
 
         List<Post> posts = mongoTemplate.find(mongoQuery, Post.class);
         return posts.stream()
-                .map(p -> modelMapper.map(p, PostDto.class))
-                .toList();
+                .map(post -> modelMapper.map(post, PostDto.class))
+                .collect(Collectors.toList());
     }
+
 
     @Override
     public List<PostDto> getAllPosts() {
@@ -182,9 +197,9 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<ReceiptDto> getAllReceipts() {
-        return StreamSupport.stream(receiptRepository.findAll().spliterator(), false)
-                .map(p -> modelMapper.map(p, ReceiptDto.class))
+    public List<OrderrDto> getAllReceipts() {
+        return StreamSupport.stream(orderrRepository.findAll().spliterator(), false)
+                .map(p -> modelMapper.map(p, OrderrDto.class))
                 .collect(Collectors.toList());
     }
 
@@ -205,24 +220,24 @@ public class PostServiceImpl implements PostService {
         return modelMapper.map(post, PostDto.class);
     }
 
-    @Override
-    public Adjustment adjust(String id, String author, int num, boolean add) {
-        Post post = postRepository.findById(id).orElseThrow(() -> new PostNotFoundException());
-        Adjustment adjustment = new Adjustment(num, add, author);
-        post.adjust(adjustment);
-        postRepository.save(post);
-//        double totalSell = post.getSell() * num;
-//        double totalbuy = post.getBuy() * num;
-//        double income = post.getSell() - post.getBuy();
-        double totalSell = post.getPrice() * num;
-        double totalbuy = post.getPrice() * num;
-        double income = post.getPrice() - post.getPrice();
-//        Receipt receipt = new Receipt(post.getName(), post.getImageUrl(), num, totalSell, totalbuy, totalSell - totalbuy, author, post.getCategory());
-
-        Receipt receipt = new Receipt(post.getName(), post.getImageUrls().get(0), num, totalSell, totalbuy, totalSell - totalbuy, author, post.getCategory());
-        receiptRepository.save(receipt);
-        return adjustment;
-    }
+//    @Override
+//    public Adjustment saveOrder(String id, String author, int num, boolean add) {
+//        Post post = postRepository.findById(id).orElseThrow(() -> new PostNotFoundException());
+//        Adjustment adjustment = new Adjustment(num, add, author);
+//        post.adjust(adjustment);
+//        postRepository.save(post);
+////        double totalSell = post.getSell() * num;
+////        double totalbuy = post.getBuy() * num;
+////        double income = post.getSell() - post.getBuy();
+//        double totalSell = post.getPrice() * num;
+//        double totalbuy = post.getPrice() * num;
+//        double income = post.getPrice() - post.getPrice();
+////        Receipt receipt = new Receipt(post.getName(), post.getImageUrl(), num, totalSell, totalbuy, totalSell - totalbuy, author, post.getCategory());
+//
+//        Orderr orderr = new Orderr(post.getName(), post.getImageUrls().get(0), num, totalSell, totalbuy, totalSell - totalbuy, author, post.getCategory());
+//        orderrRepository.save(orderr);
+//        return adjustment;
+//    }
 
     @Override
     public List<PostDto> findPostsByIds(String[] ids) {
@@ -268,6 +283,11 @@ public class PostServiceImpl implements PostService {
             e.printStackTrace();
             throw new RuntimeException("S3 upload failed: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public String saveOrder(OrderrDto orderr) {
+        return "";
     }
 
 

@@ -3,8 +3,9 @@ package dev.shrekback.post.controller;
 import dev.shrekback.post.dto.NewPostDto;
 import dev.shrekback.post.dto.PostDto;
 import dev.shrekback.post.dto.QueryDto;
-import dev.shrekback.post.dto.ReceiptDto;
+import dev.shrekback.post.dto.OrderrDto;
 import dev.shrekback.post.model.Adjustment;
+import dev.shrekback.post.model.Orderr;
 import dev.shrekback.post.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -66,7 +67,7 @@ public class PostController  {
 
 
     @GetMapping("/posts/receipts")
-    public List<ReceiptDto> getAllReceipts() {
+    public List<OrderrDto> getAllReceipts() {
         return postService.getAllReceipts();
     }
 
@@ -86,10 +87,16 @@ public class PostController  {
         return postService.updatePost(id, newPostDto);
     }
 
+//
+//    @PostMapping("/post/{id}/adjust/{add}/number/{num}/{author}")
+//    public Adjustment saveOrder(@PathVariable String id, @PathVariable String author, @PathVariable Boolean add, @PathVariable int num) {
+//        return postService.saveOrder(id, author, num, add);
+//
+//    }
 
-    @PostMapping("/post/{id}/adjust/{add}/number/{num}/{author}")
-    public Adjustment adjust(@PathVariable String id, @PathVariable String author, @PathVariable Boolean add, @PathVariable int num) {
-        return postService.adjust(id, author, num, add);
+    @PostMapping("/saveOrder/{login}")
+    public String saveOrder(@RequestBody OrderrDto orderrDto) {
+        return postService.saveOrder(orderrDto);
 
     }
 
