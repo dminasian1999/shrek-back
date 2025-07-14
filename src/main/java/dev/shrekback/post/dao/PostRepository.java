@@ -15,17 +15,13 @@ public interface PostRepository extends CrudRepository<Post, String> {
 	Stream<Post> findByCategoryContainsIgnoreCase(String query);
 	Stream<Post> findByCategoryOrderByPriceAsc(String category);
 	Stream<Post> findByCategoryOrderByPriceDesc(String category);
-
 	Stream<Post> findByCategoryAndPriceBetween(String type, double price, double price2);
-
-
-
 	Stream<Post> findByOrderByDateCreatedDesc();
-
-
 	Stream<Post>findByNameIgnoreCase(String title);
-
 	Stream<Post> findByIdIn(String [] ids);        // ← “In”, not “Containing”
+	Stream<Post> findByColor(String color);
+	Stream<Post> findByMaterials(String color);
+
 
 
 
