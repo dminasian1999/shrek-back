@@ -3,9 +3,7 @@ package dev.shrekback.post.service;
 import dev.shrekback.post.dto.NewPostDto;
 import dev.shrekback.post.dto.PostDto;
 import dev.shrekback.post.dto.QueryDto;
-import dev.shrekback.post.dto.OrderrDto;
-import dev.shrekback.post.model.Adjustment;
-import dev.shrekback.post.model.Orderr;
+import dev.shrekback.accounting.dto.OrderDto;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -17,7 +15,6 @@ public interface PostService {
 
     List<PostDto> getAllPosts();
 
-    List<OrderrDto> getAllReceipts();
 
     PostDto removePost(String id);
 
@@ -27,7 +24,7 @@ public interface PostService {
 
     String saveFiles(MultipartFile file);
 
-    String saveOrder(OrderrDto orderr);
+    String saveOrder(OrderDto orderr);
 
     PostDto findPostById(String id);
 

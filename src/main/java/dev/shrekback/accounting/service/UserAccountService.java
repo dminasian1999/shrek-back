@@ -2,11 +2,13 @@ package dev.shrekback.accounting.service;
 
 import dev.shrekback.accounting.dto.*;
 import dev.shrekback.accounting.model.CartItem;
+import dev.shrekback.accounting.model.OrderItem;
 import dev.shrekback.accounting.model.PaymentMethod;
 
 import java.util.List;
 
 public interface UserAccountService {
+	boolean captureOrder(String orderId);
 
 	UserDto updatePaymentMethod(String login, PaymentMethodDto paymentMethod);
 
@@ -35,5 +37,5 @@ public interface UserAccountService {
 
 	UserDto updateCartList(String login, String cartItemId, boolean isAdd);
 
-
+	OrderDto createOrder(String login, OrderItem orderItem, boolean isAdd);
 }

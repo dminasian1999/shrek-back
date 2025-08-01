@@ -3,9 +3,7 @@ package dev.shrekback.post.controller;
 import dev.shrekback.post.dto.NewPostDto;
 import dev.shrekback.post.dto.PostDto;
 import dev.shrekback.post.dto.QueryDto;
-import dev.shrekback.post.dto.OrderrDto;
-import dev.shrekback.post.model.Adjustment;
-import dev.shrekback.post.model.Orderr;
+import dev.shrekback.accounting.dto.OrderDto;
 import dev.shrekback.post.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -66,10 +64,6 @@ public class PostController  {
 
 
 
-    @GetMapping("/posts/receipts")
-    public List<OrderrDto> getAllReceipts() {
-        return postService.getAllReceipts();
-    }
 
     @GetMapping("/posts")
     public List<PostDto> getAllPosts() {
@@ -95,8 +89,8 @@ public class PostController  {
 //    }
 
     @PostMapping("/saveOrder/{login}")
-    public String saveOrder(@RequestBody OrderrDto orderrDto) {
-        return postService.saveOrder(orderrDto);
+    public String saveOrder(@RequestBody OrderDto orderDto) {
+        return postService.saveOrder(orderDto);
 
     }
 

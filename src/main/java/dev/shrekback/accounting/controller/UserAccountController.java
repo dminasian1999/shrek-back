@@ -2,9 +2,12 @@ package dev.shrekback.accounting.controller;
 
 import dev.shrekback.accounting.dto.*;
 import dev.shrekback.accounting.model.CartItem;
+import dev.shrekback.accounting.service.PayPalService;
 import dev.shrekback.accounting.service.UserAccountService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -15,10 +18,26 @@ import java.util.List;
 @RequestMapping("/users")
 @RequiredArgsConstructor
 @CrossOrigin
+@Slf4j
+
 public class UserAccountController {
 
     final UserAccountService userAccountService;
 
+    @PostMapping(value = "/payment/capture", consumes = "application/json")
+    public ResponseEntity<String> capturePayment(@RequestBody PayPalCaptureDto dto) {
+        log.info("Attempting to capture PayPal order: {}", dto.getOrderId());
+
+        if (dto.getOrderId() == null || dto.getOrderId().isBlank()) {
+            return ResponseEntity.badRequest().body("Missing orderId");
+        }
+
+        boolean success = userAccountService.captureOrder(dto.getOrderId());
+
+        return success
+                ? ResponseEntity.ok("Payment captured successfully")
+                : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to capture payment");
+    }
 
     @PutMapping("/payment-method/{login}")
     public UserDto updatePaymentMethod(@PathVariable String login,@RequestBody PaymentMethodDto paymentMethodDto) {

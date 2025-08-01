@@ -8,15 +8,12 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import dev.shrekback.post.dao.PostRepository;
-import dev.shrekback.post.dao.OrderrRepository;
 import dev.shrekback.post.dto.NewPostDto;
-import dev.shrekback.post.dto.OrderrDto;
+import dev.shrekback.accounting.dto.OrderDto;
 import dev.shrekback.post.dto.PostDto;
 import dev.shrekback.post.dto.QueryDto;
 import dev.shrekback.post.dto.exceptions.PostNotFoundException;
-import dev.shrekback.post.model.Adjustment;
 import dev.shrekback.post.model.Post;
-import dev.shrekback.post.model.Orderr;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,7 +38,6 @@ public class PostServiceImpl implements PostService {
     private final ModelMapper modelMapper;
     private final MongoTemplate mongoTemplate;
     private final PostRepository postRepository;
-    private final OrderrRepository orderrRepository;
 
     @Value("${aws.s3.access.key}")
     private String accessKey;
@@ -196,12 +192,6 @@ public class PostServiceImpl implements PostService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public List<OrderrDto> getAllReceipts() {
-        return StreamSupport.stream(orderrRepository.findAll().spliterator(), false)
-                .map(p -> modelMapper.map(p, OrderrDto.class))
-                .collect(Collectors.toList());
-    }
 
     @Override
     public PostDto removePost(String id) {
@@ -286,7 +276,7 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public String saveOrder(OrderrDto orderr) {
+    public String saveOrder(OrderDto orderr) {
         return "";
     }
 
