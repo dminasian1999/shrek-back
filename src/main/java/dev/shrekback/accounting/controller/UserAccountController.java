@@ -2,7 +2,6 @@ package dev.shrekback.accounting.controller;
 
 import dev.shrekback.accounting.dto.*;
 import dev.shrekback.accounting.model.CartItem;
-import dev.shrekback.accounting.service.PayPalService;
 import dev.shrekback.accounting.service.UserAccountService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
