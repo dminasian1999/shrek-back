@@ -8,4 +8,3 @@ FROM eclipse-temurin:17-jre-alpine
 COPY --from=builder ./target/shrek-back-0.0.1-SNAPSHOT.jar ./shrek-back.jar
 EXPOSE 8080
 CMD ["java", "-jar", "shrek-back.jar"]
-
