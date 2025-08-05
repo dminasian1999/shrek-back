@@ -13,15 +13,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
@@ -29,13 +25,6 @@ import java.util.stream.StreamSupport;
 @Service
 @RequiredArgsConstructor
 public class UserAccountServiceImpl implements UserAccountService, CommandLineRunner {
-
-     final ModelMapper modelMapper;
-     final PasswordEncoder passwordEncoder;
-     final UserAccountRepository userAccountRepository;
-     final UserTokenRepository userTokenRepository;
-
-     final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${paypal.client-id}")
     private String clientId;
@@ -45,6 +34,13 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
 
     @Value("${paypal.base-url}")
     private String baseUrl;
+
+    final ModelMapper modelMapper;
+    final PasswordEncoder passwordEncoder;
+    final UserAccountRepository userAccountRepository;
+    final UserTokenRepository userTokenRepository;
+
+//     final RestTemplate restTemplate = new RestTemplate();
 
     // PayPal Integration
 
@@ -156,6 +152,7 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
         return modelMapper.map(userAccount, UserDto.class);
     }
 
+    @Override
     public UserDto updatePaymentMethod(String login, PaymentMethodDto dto) {
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
@@ -269,7 +266,7 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
 
     @Override
     public boolean captureOrder(String orderId) {
-        return  true;
+        return true;
 
 //
 //      try {
@@ -300,26 +297,26 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
 //        }
 
     }
-    private String getAccessToken() {
-        try {
-            String tokenUrl = baseUrl + "/v1/oauth2/token";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setBasicAuth(clientId, secret, StandardCharsets.UTF_8);
-
-            HttpEntity<String> request = new HttpEntity<>("grant_type=client_credentials", headers);
-
-            ResponseEntity<Map> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, request, Map.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return (String) response.getBody().get("access_token");
-            }
-
-            log.error("Failed to get PayPal token: {}", response.getBody());
-        } catch (Exception e) {
-            log.error("Exception while getting PayPal token: ", e);
-        }
-        return null;
-    }
+//    private String getAccessToken() {
+//        try {
+//            String tokenUrl = baseUrl + "/v1/oauth2/token";
+//
+//            HttpHeaders headers = new HttpHeaders();
+//            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+//            headers.setBasicAuth(clientId, secret, StandardCharsets.UTF_8);
+//
+//            HttpEntity<String> request = new HttpEntity<>("grant_type=client_credentials", headers);
+//
+//            ResponseEntity<Map> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, request, Map.class);
+//            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+//                return (String) response.getBody().get("access_token");
+//            }
+//
+//            log.error("Failed to get PayPal token: {}", response.getBody());
+//        } catch (Exception e) {
+//            log.error("Exception while getting PayPal token: ", e);
+//        }
+//        return null;
+//    }
 
 }

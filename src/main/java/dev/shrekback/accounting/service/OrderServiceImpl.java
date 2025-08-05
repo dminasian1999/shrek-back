@@ -6,7 +6,6 @@ import dev.shrekback.accounting.dao.UserTokenRepository;
 import dev.shrekback.accounting.dto.OrderDto;
 import dev.shrekback.accounting.model.Order;
 import dev.shrekback.accounting.model.OrderStatus;
-import dev.shrekback.accounting.model.UserAccount;
 import dev.shrekback.post.dao.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
