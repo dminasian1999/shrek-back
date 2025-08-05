@@ -29,6 +29,7 @@ public class UserAccount {
     PaymentMethod paymentMethod; // ✅ Single method
 
     Set<String> wishList;
+    @Getter
     List<Order> orders;
 
     public UserAccount() {
@@ -63,12 +64,12 @@ public class UserAccount {
         return wishList.remove(productId);
     }
 
-    public boolean addCartEntry(CartItem cartItem) {
-        return cart.addCartEntry(cartItem);
+    public boolean addCartEntry(Item item) {
+        return cart.addCartEntry(item);
     }
 
-    public boolean removeCartEntry(CartItem cartItem) {
-        return cart.removeCartEntry(cartItem);
+    public boolean removeCartEntry(Item item) {
+        return cart.removeCartEntry(item);
     }
 
     public void addOrder(Order order) {

@@ -8,8 +8,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentMethod {
-    private String type; // e.g., "CREDIT_CARD", "PAYPAL"
-    private String provider; // e.g., "Visa", "Mastercard", "PayPal"
-    private String accountNumberMasked; // e.g., **** **** **** 1234
-    private String expiryDate; // MM/YY
+    private String cardname;
+    private String cardtype;
+    private String cardno;
+    private String cvv;
+    private String exdate;
 }
+

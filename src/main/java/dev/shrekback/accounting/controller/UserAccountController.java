@@ -1,7 +1,7 @@
 package dev.shrekback.accounting.controller;
 
 import dev.shrekback.accounting.dto.*;
-import dev.shrekback.accounting.model.CartItem;
+import dev.shrekback.accounting.model.Item;
 import dev.shrekback.accounting.service.UserAccountService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -131,17 +131,28 @@ public class UserAccountController {
 
 
     @PutMapping("/{username}/cartList")
-    public UserDto addCartList(@PathVariable String username, @RequestBody CartItem cartItem) {
-        return userAccountService.changeCartList(username, cartItem, true);
+    public UserDto addCartList(@PathVariable String username, @RequestBody Item item) {
+        return userAccountService.changeCartList(username, item, true);
     }
 
     @DeleteMapping("/{username}/cartList")
-    public UserDto deleteCartList(@PathVariable String username, @RequestBody CartItem cartItem) {
-        return userAccountService.changeCartList(username, cartItem, false);
+    public UserDto deleteCartList(@PathVariable String username, @RequestBody Item item) {
+        return userAccountService.changeCartList(username, item, false);
     }
 
     @PutMapping("/{username}/cartList/{productId}/update/{isAdd}")
     public UserDto updateCartList(@PathVariable String username, @PathVariable String productId,@PathVariable boolean isAdd) {
         return userAccountService.updateCartList(username, productId, isAdd);
     }
+
+    @PostMapping("/{login}/payment/createOrder")
+    public ResponseEntity<List<OrderDto>> createOrder(
+            @PathVariable String login,
+            @RequestParam(defaultValue = "false") boolean isAdd,
+            @RequestBody OrderRequestDto request
+    ) {
+        List<OrderDto> result = userAccountService.createOrder(login, request, isAdd);
+        return ResponseEntity.ok(result);
+    }
+
 }

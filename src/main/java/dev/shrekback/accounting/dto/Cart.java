@@ -1,6 +1,6 @@
 package dev.shrekback.accounting.dto;
 
-import dev.shrekback.accounting.model.CartItem;
+import dev.shrekback.accounting.model.Item;
 import dev.shrekback.post.dto.exceptions.PostNotFoundException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,21 +14,21 @@ import java.util.Set;
 @NoArgsConstructor
 public class Cart {
     String userId;
-    Set<CartItem> items = new HashSet<>();
+    Set<Item> items = new HashSet<>();
     Double totalPrice;
 
 
-    public boolean addCartEntry(CartItem cartItem) {
+    public boolean addCartEntry(Item item) {
         boolean res;
-        res = items.add(cartItem);
+        res = items.add(item);
         recalculateTotalPrice();
         return res;
 
     }
 
-    public boolean removeCartEntry(CartItem cartItem) {
+    public boolean removeCartEntry(Item item) {
         boolean res;
-        res = items.remove(cartItem);
+        res = items.remove(item);
         recalculateTotalPrice();
         return res;
 

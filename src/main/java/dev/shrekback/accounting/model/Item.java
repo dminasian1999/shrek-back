@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode(of = {"cartItemId"})
-public class CartItem {
+public class Item {
      String cartItemId;
     private Post product;
     private int quantity;

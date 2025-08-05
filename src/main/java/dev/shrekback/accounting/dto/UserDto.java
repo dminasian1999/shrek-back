@@ -1,7 +1,5 @@
 package dev.shrekback.accounting.dto;
 
-import dev.shrekback.accounting.model.Order;
-import dev.shrekback.accounting.model.PaymentMethod;
 import lombok.*;
 
 import java.util.List;
@@ -20,9 +18,9 @@ public class UserDto {
 	Set<String> roles;
 	AddressDto address;
 	Cart cart;
-	PaymentMethod paymentMethod; // ✅ Single method
+	PaymentMethodDto paymentMethod; // ✅ Single method
 
 	Set<String> wishList;
 
-	List<Order> orders;
+	List<OrderDto> orders;
 }
