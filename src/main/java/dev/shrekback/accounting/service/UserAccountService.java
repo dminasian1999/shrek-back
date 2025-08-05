@@ -36,6 +36,6 @@ public interface UserAccountService {
 
 //	List<OrderDto> createOrder(String login, OrderRequestDto request, boolean isAdd);
 
-//	boolean captureOrder(String orderId);
+	boolean captureOrder(String orderId);
 
 }

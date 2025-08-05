@@ -267,38 +267,39 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
 //                .toList();
 //    }
 
-//    @Override
-//    public boolean captureOrder(String orderId) {
-//        return  true;
-//
+    @Override
+    public boolean captureOrder(String orderId) {
+        return  true;
 
-    /// /        try {
-    /// /            String accessToken = getAccessToken();
-    /// /            if (accessToken == null) {
-    /// /                log.error("Failed to retrieve PayPal access token");
-    /// /                return false;
-    /// /            }
-    /// /
-    /// /            String captureUrl = baseUrl + "/v2/checkout/orders/" + orderId + "/capture";
-    /// /            HttpHeaders headers = new HttpHeaders();
-    /// /            headers.setBearerAuth(accessToken);
-    /// /            headers.setContentType(MediaType.APPLICATION_JSON);
-    /// /
-    /// /            HttpEntity<String> request = new HttpEntity<>(null, headers);
-    /// /            ResponseEntity<String> response = restTemplate.postForEntity(captureUrl, request, String.class);
-    /// /
-    /// /            if (response.getStatusCode().is2xxSuccessful()) {
-    /// /                log.info("Order captured successfully: {}", response.getBody());
-    /// /                return true;
-    /// /            } else {
-    /// /                log.error("Failed to capture order: {}", response.getBody());
-    /// /                return false;
-    /// /            }
-    /// /        } catch (Exception e) {
-    /// /            log.error("Exception while capturing order: ", e);
-    /// /            return false;
-    /// /        }
-//    }
+//
+//      try {
+//            String accessToken = getAccessToken();
+//            if (accessToken == null) {
+//                log.error("Failed to retrieve PayPal access token");
+//                return false;
+//            }
+//
+//            String captureUrl = baseUrl + "/v2/checkout/orders/" + orderId + "/capture";
+//            HttpHeaders headers = new HttpHeaders();
+//            headers.setBearerAuth(accessToken);
+//            headers.setContentType(MediaType.APPLICATION_JSON);
+//
+//            HttpEntity<String> request = new HttpEntity<>(null, headers);
+//            ResponseEntity<String> response = restTemplate.postForEntity(captureUrl, request, String.class);
+//
+//            if (response.getStatusCode().is2xxSuccessful()) {
+//                log.info("Order captured successfully: {}", response.getBody());
+//                return true;
+//            } else {
+//                log.error("Failed to capture order: {}", response.getBody());
+//                return false;
+//            }
+//        } catch (Exception e) {
+//            log.error("Exception while capturing order: ", e);
+//            return false;
+//        }
+
+    }
     private String getAccessToken() {
         try {
             String tokenUrl = baseUrl + "/v1/oauth2/token";

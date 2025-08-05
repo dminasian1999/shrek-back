@@ -145,14 +145,14 @@ public class UserAccountController {
         return userAccountService.updateCartList(username, productId, isAdd);
     }
 
-    @PostMapping("/{login}/payment/createOrder")
-    public ResponseEntity<List<OrderDto>> createOrder(
-            @PathVariable String login,
-            @RequestParam(defaultValue = "false") boolean isAdd,
-            @RequestBody OrderRequestDto request
-    ) {
-        List<OrderDto> result = userAccountService.createOrder(login, request, isAdd);
-        return ResponseEntity.ok(result);
-    }
+//    @PostMapping("/{login}/payment/createOrder")
+//    public ResponseEntity<List<OrderDto>> createOrder(
+//            @PathVariable String login,
+//            @RequestParam(defaultValue = "false") boolean isAdd,
+//            @RequestBody OrderRequestDto request
+//    ) {
+//        List<OrderDto> result = userAccountService.createOrder(login, request, isAdd);
+//        return ResponseEntity.ok(result);
+//    }
 
 }
