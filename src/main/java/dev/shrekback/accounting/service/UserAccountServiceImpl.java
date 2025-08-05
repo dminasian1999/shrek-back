@@ -30,12 +30,12 @@ import java.util.stream.StreamSupport;
 @RequiredArgsConstructor
 public class UserAccountServiceImpl implements UserAccountService, CommandLineRunner {
 
-    private final ModelMapper modelMapper;
-    private final PasswordEncoder passwordEncoder;
-    private final UserAccountRepository userAccountRepository;
-    private final UserTokenRepository userTokenRepository;
+     final ModelMapper modelMapper;
+     final PasswordEncoder passwordEncoder;
+     final UserAccountRepository userAccountRepository;
+     final UserTokenRepository userTokenRepository;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+     final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${paypal.client-id}")
     private String clientId;
