@@ -156,6 +156,7 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
         return modelMapper.map(userAccount, UserDto.class);
     }
 
+    @Override
     public UserDto updatePaymentMethod(String login, PaymentMethodDto dto) {
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
