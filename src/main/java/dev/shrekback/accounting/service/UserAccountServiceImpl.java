@@ -1,15 +1,13 @@
 package dev.shrekback.accounting.service;
 
-import dev.shrekback.accounting.dao.OrderRepository;
 import dev.shrekback.accounting.dao.UserAccountRepository;
 import dev.shrekback.accounting.dao.UserTokenRepository;
 import dev.shrekback.accounting.dto.*;
-import dev.shrekback.accounting.dto.exceptions.*;
+import dev.shrekback.accounting.dto.exceptions.InvalidEmailExeption;
+import dev.shrekback.accounting.dto.exceptions.TokenExpiredExeption;
+import dev.shrekback.accounting.dto.exceptions.UserExistsException;
+import dev.shrekback.accounting.dto.exceptions.UserNotFoundException;
 import dev.shrekback.accounting.model.*;
-import dev.shrekback.post.dao.PostRepository;
-import dev.shrekback.post.dto.exceptions.PostNotFoundException;
-import dev.shrekback.post.model.Adjustment;
-import dev.shrekback.post.model.Post;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -22,11 +20,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @Slf4j
@@ -38,8 +34,6 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
     private final PasswordEncoder passwordEncoder;
     private final UserAccountRepository userAccountRepository;
     private final UserTokenRepository userTokenRepository;
-    private final PostRepository postRepository;
-    private final OrderRepository orderRepository;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -178,6 +172,7 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
 
         return modelMapper.map(userAccount, UserDto.class);
     }
+
     private String maskCardNumber(String cardno) {
         if (cardno == null || cardno.length() < 4) return "****";
         return "**** **** **** " + cardno.substring(cardno.length() - 4);
@@ -240,70 +235,70 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
         return modelMapper.map(userAccount, UserDto.class);
     }
 
-    @Override
-    public List<OrderDto> createOrder(String login, OrderRequestDto request, boolean isAdd) {
-        UserAccount userAccount = userAccountRepository.findById(login)
-                .orElseThrow(UserNotFoundException::new);
-
-        if (!isAdd || request.getOrderItems() == null) {
-            return List.of();
-        }
-
-        List<OrderDto> createdOrders = new ArrayList<>();
-
-        for (OrderItem item : request.getOrderItems()) {
-            Post post = postRepository.findById(item.getProductId())
-                    .orElseThrow(PostNotFoundException::new);
-
-            Adjustment adjustment = new Adjustment(1, true, login);
-            post.adjust(adjustment);
-            postRepository.save(post);
-
-            Order order = modelMapper.map(request, Order.class);
-            orderRepository.save(order);
-            userAccount.addOrder(order);
-
-            createdOrders.add(modelMapper.map(order, OrderDto.class));
-        }
-
-        userAccountRepository.save(userAccount);
-        return userAccount.getOrders().stream()
-                .map(o -> modelMapper.map(o, OrderDto.class))
-                .toList();
-    }
-
-    @Override
-    public boolean captureOrder(String orderId) {
-        return  true;
-
-//        try {
-//            String accessToken = getAccessToken();
-//            if (accessToken == null) {
-//                log.error("Failed to retrieve PayPal access token");
-//                return false;
-//            }
+//    @Override
+//    public List<OrderDto> createOrder(String login, OrderRequestDto request, boolean isAdd) {
+//        UserAccount userAccount = userAccountRepository.findById(login)
+//                .orElseThrow(UserNotFoundException::new);
 //
-//            String captureUrl = baseUrl + "/v2/checkout/orders/" + orderId + "/capture";
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.setBearerAuth(accessToken);
-//            headers.setContentType(MediaType.APPLICATION_JSON);
-//
-//            HttpEntity<String> request = new HttpEntity<>(null, headers);
-//            ResponseEntity<String> response = restTemplate.postForEntity(captureUrl, request, String.class);
-//
-//            if (response.getStatusCode().is2xxSuccessful()) {
-//                log.info("Order captured successfully: {}", response.getBody());
-//                return true;
-//            } else {
-//                log.error("Failed to capture order: {}", response.getBody());
-//                return false;
-//            }
-//        } catch (Exception e) {
-//            log.error("Exception while capturing order: ", e);
-//            return false;
+//        if (!isAdd || request.getOrderItems() == null) {
+//            return List.of();
 //        }
-    }
+//
+//        List<OrderDto> createdOrders = new ArrayList<>();
+//
+//        for (OrderItem item : request.getOrderItems()) {
+//            Post post = postRepository.findById(item.getProductId())
+//                    .orElseThrow(PostNotFoundException::new);
+//
+//            Adjustment adjustment = new Adjustment(1, true, login);
+//            post.adjust(adjustment);
+//            postRepository.save(post);
+//
+//            Order order = modelMapper.map(request, Order.class);
+//            orderRepository.save(order);
+//            userAccount.addOrder(order);
+//
+//            createdOrders.add(modelMapper.map(order, OrderDto.class));
+//        }
+//
+//        userAccountRepository.save(userAccount);
+//        return userAccount.getOrders().stream()
+//                .map(o -> modelMapper.map(o, OrderDto.class))
+//                .toList();
+//    }
 
+//    @Override
+//    public boolean captureOrder(String orderId) {
+//        return  true;
+//
+
+    /// /        try {
+    /// /            String accessToken = getAccessToken();
+    /// /            if (accessToken == null) {
+    /// /                log.error("Failed to retrieve PayPal access token");
+    /// /                return false;
+    /// /            }
+    /// /
+    /// /            String captureUrl = baseUrl + "/v2/checkout/orders/" + orderId + "/capture";
+    /// /            HttpHeaders headers = new HttpHeaders();
+    /// /            headers.setBearerAuth(accessToken);
+    /// /            headers.setContentType(MediaType.APPLICATION_JSON);
+    /// /
+    /// /            HttpEntity<String> request = new HttpEntity<>(null, headers);
+    /// /            ResponseEntity<String> response = restTemplate.postForEntity(captureUrl, request, String.class);
+    /// /
+    /// /            if (response.getStatusCode().is2xxSuccessful()) {
+    /// /                log.info("Order captured successfully: {}", response.getBody());
+    /// /                return true;
+    /// /            } else {
+    /// /                log.error("Failed to capture order: {}", response.getBody());
+    /// /                return false;
+    /// /            }
+    /// /        } catch (Exception e) {
+    /// /            log.error("Exception while capturing order: ", e);
+    /// /            return false;
+    /// /        }
+//    }
     private String getAccessToken() {
         try {
             String tokenUrl = baseUrl + "/v1/oauth2/token";

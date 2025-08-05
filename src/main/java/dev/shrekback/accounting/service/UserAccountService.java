@@ -34,8 +34,8 @@ public interface UserAccountService {
 
 	UserDto updateCartList(String login, String cartItemId, boolean isAdd);
 
-	List<OrderDto> createOrder(String login, OrderRequestDto request, boolean isAdd);
+//	List<OrderDto> createOrder(String login, OrderRequestDto request, boolean isAdd);
 
-	boolean captureOrder(String orderId);
+//	boolean captureOrder(String orderId);
 
 }
