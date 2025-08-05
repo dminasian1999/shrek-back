@@ -1,31 +1,22 @@
 package dev.shrekback.accounting.service;
 
 import dev.shrekback.accounting.dao.OrderRepository;
-import dev.shrekback.accounting.dao.UserAccountRepository;
-import dev.shrekback.accounting.dao.UserTokenRepository;
 import dev.shrekback.accounting.dto.OrderDto;
+import dev.shrekback.accounting.dto.exceptions.UserNotFoundException;
 import dev.shrekback.accounting.model.Order;
 import dev.shrekback.accounting.model.OrderStatus;
-import dev.shrekback.post.dao.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 
 
 @Service
 @RequiredArgsConstructor
-public class OrderServiceImpl  implements   OrderService{
+public class OrderServiceImpl implements OrderService {
 
-    private final ModelMapper modelMapper;
-    private final PasswordEncoder passwordEncoder;
-    private final UserAccountRepository userAccountRepository;
-    private final UserTokenRepository userTokenRepository;
-    private final PostRepository postRepository;
-    private final OrderRepository orderRepository;
-
+     final ModelMapper modelMapper;
+     final OrderRepository orderRepository;
 
 
     @Override
@@ -39,7 +30,14 @@ public class OrderServiceImpl  implements   OrderService{
     @Override
     public List<OrderDto> getOrdersByUser(String userId) {
         return orderRepository.findByUserId(userId).stream()
-                .map(order -> modelMapper.map(order,OrderDto.class))
+                .map(order -> modelMapper.map(order, OrderDto.class))
                 .toList();
+    }
+
+    @Override
+    public OrderDto getOrdersById(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(UserNotFoundException::new);
+        return modelMapper.map(order, OrderDto.class);
     }
 }

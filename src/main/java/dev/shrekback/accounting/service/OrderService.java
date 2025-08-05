@@ -8,4 +8,5 @@ public interface OrderService {
 
      OrderDto checkOut(OrderDto orderDto);
      List<OrderDto> getOrdersByUser(String userId);
+     OrderDto getOrdersById(String orderId);
 }

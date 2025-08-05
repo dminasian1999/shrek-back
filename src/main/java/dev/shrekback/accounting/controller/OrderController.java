@@ -25,4 +25,9 @@ public class OrderController {
     public List<OrderDto> getOrdersByUser(@PathVariable String userId) {
         return orderService.getOrdersByUser(userId);
     }
+
+    @GetMapping("/order/{orderId}")
+    public OrderDto getOrdersById(@PathVariable String orderId) {
+        return orderService.getOrdersById(orderId);
+    }
 }
