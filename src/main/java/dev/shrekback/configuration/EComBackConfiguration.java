@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class EComBackConfiguration {
@@ -22,14 +23,6 @@ public class EComBackConfiguration {
     @Value("${aws.s3.secret.key}")
     private String secretKey;
 
-//    @Bean
-//    public S3Client s3Client() {
-//        AwsBasicCredentials creds = AwsBasicCredentials.create(accessKey, secretKey);
-//        return S3Client.builder()
-//                .region(Region.of(region))
-//                .credentialsProvider(StaticCredentialsProvider.create(creds))
-//                .build();
-//    }
     @Bean
     public AmazonS3 amazonS3Client() {
         BasicAWSCredentials creds = new BasicAWSCredentials(accessKey, secretKey);
@@ -37,6 +30,11 @@ public class EComBackConfiguration {
                 .withCredentials(new AWSStaticCredentialsProvider(creds))
                 .withRegion(Regions.US_EAST_1)
                 .build();
+    }
+
+    @Bean
+    public WebClient webClient() {
+        return WebClient.create("https://services.israelpost.co.il/servicesCalculateDeliveryPriceWS/CalculateDeliveryPriceWS");
     }
 
     @Bean
@@ -53,5 +51,4 @@ public class EComBackConfiguration {
     public PasswordEncoder getPasswordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
 }

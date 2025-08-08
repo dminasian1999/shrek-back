@@ -55,6 +55,8 @@ public class AuthorizationConfiguration {
                         .access(new WebExpressionAuthorizationManager("#username == authentication.name"))
                         .requestMatchers(HttpMethod.POST, "/users/payment/capture")
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/shipping")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, "/users/{username}/payment/createOrder")
                         .access(new WebExpressionAuthorizationManager("#username == authentication.name"))
                         .requestMatchers(HttpMethod.PUT, "/payment-method/{login}")
