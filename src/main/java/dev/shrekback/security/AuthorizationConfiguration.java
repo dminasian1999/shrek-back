@@ -35,9 +35,7 @@ public class AuthorizationConfiguration {
                                 "/posts/type/**",
                                 "/post/{id}"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/users/recovery/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/users/recovery/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/users/recovery/**").permitAll()
+                        .requestMatchers( "/users/password/recovery/**").permitAll()
 
                         // Admin-only endpoints
                         .requestMatchers(HttpMethod.POST, "/posts/search").permitAll() // Optional: restrict this

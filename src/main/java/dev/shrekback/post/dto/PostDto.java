@@ -16,6 +16,8 @@ public class PostDto {
     private Integer quantity;
     private Double price;
     private String category;
+    private Double weight;
+    private String size;
     private String desc;
     private String color;
     private String material;

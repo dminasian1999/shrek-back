@@ -92,7 +92,7 @@ public class UserAccountController {
     }
 
     // Request password recovery link by username
-    @PostMapping("/password/recovery/{username}")
+    @GetMapping("/password/recovery/{username}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void recoveryPasswordLink(@PathVariable String username) {
         userAccountService.recoveryPasswordLink(username);

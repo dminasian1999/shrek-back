@@ -24,6 +24,8 @@ public class Post {
     private int quantity;
     private double price;
     private String category;
+    private double weight;
+    private String size;
     private String desc;
     private String color;
     private String material;
@@ -34,12 +36,14 @@ public class Post {
         imageUrls = new ArrayList<>();
     }
 
-    public Post(String name, int quantity, double price, String category, String desc, String color,String material) {
+    public Post(String name, int quantity, double price, String category,double weight, String size, String desc, String color,String material) {
         this();
         this.name = name;
         this.quantity = quantity;
         this.price = price;
         this.category = category;
+        this.weight = weight;
+        this.size = size;
         this.desc = desc;
         this.color = color;
         this.material = material;
