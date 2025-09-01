@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
+import org.springframework.web.bind.annotation.PostMapping;
 
 @Configuration
 @RequiredArgsConstructor
@@ -24,8 +25,12 @@ public class AuthorizationConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
                 .authorizeHttpRequests(authorize -> authorize
+                                .requestMatchers( "/parser/{index}/{csv}").permitAll()
+                                .requestMatchers( "/parser-ems/{index}/{csv}").permitAll()
+                                .requestMatchers( "/parser-eco/{index}/{csv}").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/shippingCost/{country}/{weight}").permitAll()
 
-                        // Public endpoints
+                // Public endpoints
                         .requestMatchers(
                                 "/users/register",
                                 "/posts",
