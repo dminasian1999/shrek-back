@@ -48,7 +48,8 @@ public class AuthorizationConfiguration {
                         .hasRole(Role.ADMINISTRATOR.name())
                         .requestMatchers(HttpMethod.POST, "/checkOut").permitAll() // Optional: restrict this
 
-                        .requestMatchers("/ordersByUser/{userId}").permitAll()
+                                .requestMatchers("/ordersByUser/{userId}").permitAll()
+                                .requestMatchers("/orders-all").permitAll()
 
                         .requestMatchers("/order/{orderId}").permitAll()
 

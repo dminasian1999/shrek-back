@@ -2,6 +2,7 @@ package dev.shrekback.accounting.service;
 
 import dev.shrekback.accounting.dao.OrderRepository;
 import dev.shrekback.accounting.dto.OrderDto;
+import dev.shrekback.accounting.dto.UserDto;
 import dev.shrekback.accounting.dto.exceptions.UserNotFoundException;
 import dev.shrekback.accounting.model.Order;
 import dev.shrekback.accounting.model.OrderStatus;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.stream.StreamSupport;
 
 
 @Service
@@ -18,6 +20,13 @@ public class OrderServiceImpl implements OrderService {
      final ModelMapper modelMapper;
      final OrderRepository orderRepository;
 
+
+    @Override
+    public List<OrderDto> getAllOrders() {
+        return StreamSupport.stream(orderRepository.findAll().spliterator(), false)
+                .map(u -> modelMapper.map(u, OrderDto.class))
+                .toList();
+    }
 
     @Override
     public OrderDto checkOut(OrderDto orderDto) {
