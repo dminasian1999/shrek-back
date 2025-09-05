@@ -11,6 +11,7 @@ import java.util.List;
 @Getter
 @Setter
 @EqualsAndHashCode(of = "orderId")
+@AllArgsConstructor
 @ToString
 @Document(collection = "shrek-orders")
 public class Order {

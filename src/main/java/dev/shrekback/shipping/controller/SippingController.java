@@ -4,6 +4,8 @@ import dev.shrekback.shipping.service.SippingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @CrossOrigin
@@ -13,18 +15,26 @@ public class SippingController {
     final SippingService sippingService;
 
 
+    @GetMapping("/parser/countries")
+    public List<String> getValidCountries() {
+        return sippingService.getValidCountries();
+    }
+
     @PostMapping("/parser/{index}/{csv}")
     public boolean addHistoryWithFile(@PathVariable String index, @PathVariable String csv) {
-        return sippingService.addCountries(index,csv);
+        return sippingService.addCountries(index, csv);
     }
+
     @PostMapping("/parser-ems/{index}/{csv}")
     public boolean addEms(@PathVariable String index, @PathVariable String csv) {
-        return sippingService.addEms(index,csv);
+        return sippingService.addEms(index, csv);
     }
+
     @PostMapping("/parser-eco/{index}/{csv}")
     public boolean addEco(@PathVariable String index, @PathVariable String csv) {
-        return sippingService.addEco(index,csv);
+        return sippingService.addEco(index, csv);
     }
+
     @GetMapping("/shippingCost/{country}/{weight}")
     public Double getShippingCost(@PathVariable String country, @PathVariable double weight) {
         return sippingService.getShippingCost(country, weight);

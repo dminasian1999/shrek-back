@@ -30,6 +30,14 @@ public class SippingServiceImpl implements SippingService {
     final ShippingECORepository ecoRepository;
     private final MongoTemplate mongoTemplate;
 
+    @Override
+    public
+    List<String> getValidCountries(){
+       return countriesRepository.getShippingCountriesByGroupIdEcoPostIsGreaterThanOrGroupIdESMIsGreaterThan(0,0).stream()
+               .map(ShippingCountry::getCountryName)
+               .toList();
+    }
+
     /**
      * First index that *looks* like a number (after cleaning currency).
      */
@@ -303,6 +311,7 @@ public class SippingServiceImpl implements SippingService {
         double ress=0.0;
         if (country.getGroupIdEcoPost() > 0 && weight <= 2000) {
          EcoPost eco =  ecoRepository.findById(String.valueOf(country.getGroupIdEcoPost())).orElseThrow(PostNotFoundException::new);
+
             if (weight <= 100) {
                 ress =  eco.getPriceUpTo100g();
             } else if (weight <= 250) {
@@ -322,19 +331,17 @@ public class SippingServiceImpl implements SippingService {
             }
 
         }
-
-        if ((country.getGroupIdESM() > 0)) {
+        if (country.getGroupIdESM() > 0) {
             Ems ems =  emsRepository.findById(String.valueOf(country.getGroupIdESM())).orElseThrow(PostNotFoundException::new);
+
             if (weight <= 500) {
                 ress = ems.getPriceUpTo500g();
             } else if (weight <= 1000) {
                 ress = ems.getPriceUpTo1000g();
-            } else if (weight > 1000) {
-                double res = weight-1000;
-                double res1 = res%500;
-                System.out.println(res1);
-                double res2 = res1 * ems.getEachAdditional500g();
-                ress = ems.getPriceUpTo1000g()+res2;
+            } else {
+                double excess = weight - 1000;
+                int blocks = (int) Math.ceil(excess / 500.0); // full or partial 500g blocks
+                ress = ems.getPriceUpTo1000g() + blocks * ems.getEachAdditional500g();
             }
 
         }

@@ -25,6 +25,8 @@ public class AuthorizationConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
                 .authorizeHttpRequests(authorize -> authorize
+                                .requestMatchers( "/parser/countries").permitAll()
+
                                 .requestMatchers( "/parser/{index}/{csv}").permitAll()
                                 .requestMatchers( "/parser-ems/{index}/{csv}").permitAll()
                                 .requestMatchers( "/parser-eco/{index}/{csv}").permitAll()
