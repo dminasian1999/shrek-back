@@ -35,6 +35,7 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
     @Value("${paypal.base-url}")
     private String baseUrl;
 
+
     final ModelMapper modelMapper;
     final PasswordEncoder passwordEncoder;
     final UserAccountRepository userAccountRepository;
