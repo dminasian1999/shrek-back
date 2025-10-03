@@ -6,6 +6,8 @@ import lombok.Data;
 public class PostSearchDto {
     private String name;
     private String category;
+    private String subCategory;
+
     private String color;
     private String desc;
     private Double minPrice;

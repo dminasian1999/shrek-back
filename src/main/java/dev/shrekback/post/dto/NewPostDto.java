@@ -15,6 +15,8 @@ public class NewPostDto {
     private Integer quantity;
     private Double price;
     private String category;
+    private String subCategory;
+
     private Double weight;
     private String size;
     private String desc;

@@ -12,6 +12,8 @@ public class QueryDto {
     String id;
     String name;
     String category;
+    String subCategory;
+
     String color;
     private String material;
     String desc;

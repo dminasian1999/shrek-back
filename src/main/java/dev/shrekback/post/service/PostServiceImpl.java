@@ -135,6 +135,9 @@ public class PostServiceImpl implements PostService {
         if (queryDto.getCategory() != null && !queryDto.getCategory().isBlank()) {
             mongoQuery.addCriteria(Criteria.where("category").regex(Pattern.compile(queryDto.getCategory(), Pattern.CASE_INSENSITIVE)));
         }
+        if (queryDto.getSubCategory() != null && !queryDto.getSubCategory().isBlank()) {
+            mongoQuery.addCriteria(Criteria.where("subCategory").regex(Pattern.compile(queryDto.getSubCategory(), Pattern.CASE_INSENSITIVE)));
+        }
         if (queryDto.getColor() != null && !queryDto.getColor().isBlank()) {
             mongoQuery.addCriteria(Criteria.where("color").regex(Pattern.compile(queryDto.getColor(), Pattern.CASE_INSENSITIVE)));
         }
