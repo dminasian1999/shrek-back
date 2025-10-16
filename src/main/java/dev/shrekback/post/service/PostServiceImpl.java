@@ -205,13 +205,29 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PostDto updatePost(String id, NewPostDto newPostDto) {
-        Post post = postRepository.findById(id).orElseThrow(PostNotFoundException::new);
-        modelMapper.map(newPostDto, post);
+        // Fetch the existing post
+        Post post = postRepository.findById(id)
+                .orElseThrow(PostNotFoundException::new);
 
+        // Manually update fields you want to allow updating
+        if (newPostDto.getName() != null) post.setName(newPostDto.getName());
+        if (newPostDto.getImageUrls() != null) post.setImageUrls(newPostDto.getImageUrls());
+        if (newPostDto.getPrice() != null) post.setPrice(newPostDto.getPrice());
+        if (newPostDto.getCategory() != null) post.setCategory(newPostDto.getCategory());
+        if (newPostDto.getSubCategory() != null) post.setSubCategory(newPostDto.getSubCategory());
+        if (newPostDto.getWeight() != null) post.setWeight(newPostDto.getWeight());
+        if (newPostDto.getDesc() != null) post.setDesc(newPostDto.getDesc());
+        if (newPostDto.getColor() != null) post.setColor(newPostDto.getColor());
+        if (newPostDto.getMaterial() != null) post.setMaterial(newPostDto.getMaterial());
+        if (newPostDto.getSizeQuantities() != null) post.setSizeQuantities(newPostDto.getSizeQuantities());
 
+        // Save updated post
         postRepository.save(post);
+
+        // Map to PostDto for response
         return modelMapper.map(post, PostDto.class);
     }
+
 
 //    @Override
 //    public Adjustment saveOrder(String id, String author, int num, boolean add) {

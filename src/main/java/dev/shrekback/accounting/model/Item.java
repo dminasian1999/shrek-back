@@ -11,8 +11,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @EqualsAndHashCode(of = {"cartItemId"})
 public class Item {
-     String cartItemId;
+    String cartItemId;
     private Post product;
+    String selectedSize;
     private int quantity;
 
     public boolean increment() {

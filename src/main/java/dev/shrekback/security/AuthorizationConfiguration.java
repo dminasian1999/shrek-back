@@ -68,7 +68,7 @@ public class AuthorizationConfiguration {
                         .requestMatchers(HttpMethod.PUT, "/payment-method/{login}")
                         .access(new WebExpressionAuthorizationManager("#login == authentication.name"))
 
-                        .requestMatchers(HttpMethod.PUT, "/{username}/cartList/{productId}/update/{isAdd}")
+                        .requestMatchers(HttpMethod.PUT, "/users/{username}/cartList/{cartItemId}/update/{isAdd}")
                         .access(new WebExpressionAuthorizationManager("#username == authentication.name"))
 
                         .requestMatchers(HttpMethod.PUT, "/users/{username}/cartList")

@@ -51,7 +51,7 @@ public class UserAccountController {
         String credentials = new String(Base64.getDecoder().decode(token));
         return userAccountService.getUser(credentials.split(":")[0]);
     }
-
+//-
     // Register new user
     @PostMapping("/register")
     public UserDto register(@RequestBody UserRegisterDto userRegisterDto) {
@@ -140,9 +140,9 @@ public class UserAccountController {
         return userAccountService.changeCartList(username, item, false);
     }
 
-    @PutMapping("/{username}/cartList/{productId}/update/{isAdd}")
-    public UserDto updateCartList(@PathVariable String username, @PathVariable String productId,@PathVariable boolean isAdd) {
-        return userAccountService.updateCartList(username, productId, isAdd);
+    @PutMapping("/{username}/cartList/{cartItemId}/update/{isAdd}")
+    public UserDto updateCartList(@PathVariable String username, @PathVariable String cartItemId,@PathVariable boolean isAdd) {
+        return userAccountService.updateCartList(username, cartItemId, isAdd);
     }
 
 //    @PostMapping("/{login}/payment/createOrder")
