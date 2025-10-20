@@ -1,22 +1,24 @@
 package dev.shrekback.accounting.service;
 
-import com.paypal.orders.*;
 import com.paypal.core.PayPalHttpClient;
-import com.paypal.http.exceptions.HttpException;
 import com.paypal.http.HttpResponse;
+import com.paypal.orders.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
+
 @RequiredArgsConstructor
 @Service
 public class PayPalService {
 
-     final PayPalHttpClient client;
+    final PayPalHttpClient client;
 
 
-    /** Server-trusted order creation */
+    /**
+     * Server-trusted order creation
+     */
     public String createOrder(String idempotencyKey, String currency, String value,
                               String referenceId, String returnUrl, String cancelUrl) throws IOException {
         OrderRequest orderRequest = new OrderRequest();
@@ -49,7 +51,9 @@ public class PayPalService {
         return response.result().id(); // pass this back to client to approve
     }
 
-    /** Server-side capture after buyer approval */
+    /**
+     * Server-side capture after buyer approval
+     */
     public Order captureOrder(String orderId, String idempotencyKey) throws IOException {
         OrdersCaptureRequest req = new OrdersCaptureRequest(orderId);
         req.header("PayPal-Request-Id", idempotencyKey);

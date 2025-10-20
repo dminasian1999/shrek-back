@@ -31,16 +31,6 @@
     </properties>
     <dependencies>
         <dependency>
-            <groupId>com.paypal.sdk</groupId>
-            <artifactId>checkout-sdk</artifactId>
-            <version>2.0.0</version>
-        </dependency>
-<!--        <dependency>-->
-<!--            <groupId>com.paypal.sdk</groupId>-->
-<!--            <artifactId>paypal-server-sdk</artifactId>-->
-<!--            <version>1.1.0</version>-->
-<!--        </dependency>-->
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
@@ -57,7 +47,16 @@
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-s3</artifactId>
             <version>1.12.734</version>
-
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.paypal.sdk</groupId>-->
+<!--            <artifactId>paypal-server-sdk</artifactId>-->
+<!--            <version>1.1.0</version>-->
+<!--        </dependency>-->
+        <dependency>
+            <groupId>com.paypal.sdk</groupId>
+            <artifactId>checkout-sdk</artifactId>
+            <version>2.0.0</version> <!-- Latest stable as of writing -->
         </dependency>
 
         <dependency>

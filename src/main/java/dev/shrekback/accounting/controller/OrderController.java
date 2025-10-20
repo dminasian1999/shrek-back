@@ -19,6 +19,7 @@ public class OrderController {
     @PostMapping("/checkOut")
     public OrderDto checkOut(@RequestBody OrderDto orderDto) {
         System.out.println("OrderController:checkOut");
+
         return orderService.checkOut(orderDto);
     }
 

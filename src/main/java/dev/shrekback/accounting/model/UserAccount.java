@@ -17,12 +17,18 @@ public class UserAccount {
     @Id
     String login;
 
-    @Setter String firstName;
-    @Setter String lastName;
-    @Setter String password;
+    @Setter
+    String firstName;
+    @Setter
+    String lastName;
+    @Setter
+    String password;
 
     Set<Role> roles;
-    @Setter Address address;
+    @Setter
+    Address address;
+    @Setter
+
     Cart cart;
 
     @Setter
