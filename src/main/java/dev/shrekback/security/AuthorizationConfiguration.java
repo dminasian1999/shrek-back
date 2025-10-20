@@ -11,7 +11,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
-import org.springframework.web.bind.annotation.PostMapping;
 
 @Configuration
 @RequiredArgsConstructor
@@ -25,14 +24,14 @@ public class AuthorizationConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
                 .authorizeHttpRequests(authorize -> authorize
-                                .requestMatchers( "/parser/countries").permitAll()
+                        .requestMatchers("/parser/countries").permitAll()
 
-                                .requestMatchers( "/parser/{index}/{csv}").permitAll()
-                                .requestMatchers( "/parser-ems/{index}/{csv}").permitAll()
-                                .requestMatchers( "/parser-eco/{index}/{csv}").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/shippingCost/{country}/{weight}").permitAll()
+                        .requestMatchers("/parser/{index}/{csv}").permitAll()
+                        .requestMatchers("/parser-ems/{index}/{csv}").permitAll()
+                        .requestMatchers("/parser-eco/{index}/{csv}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/shippingCost/{country}/{weight}").permitAll()
 
-                // Public endpoints
+                        // Public endpoints
                         .requestMatchers(
                                 "/users/register",
                                 "/posts",
@@ -42,16 +41,19 @@ public class AuthorizationConfiguration {
                                 "/posts/type/**",
                                 "/post/{id}"
                         ).permitAll()
-                        .requestMatchers( "/users/password/recovery/**").permitAll()
+                        .requestMatchers("/users/password/recovery/**").permitAll()
 
                         // Admin-only endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/paypal/orders").permitAll() // Optional: restrict this
+                        .requestMatchers(HttpMethod.POST, "/api/paypal/orders/{orderId}/capture").permitAll() // Optional: restrict this
+
                         .requestMatchers(HttpMethod.POST, "/posts/search").permitAll() // Optional: restrict this
                         .requestMatchers("/users/{username}/roles/{role}")
                         .hasRole(Role.ADMINISTRATOR.name())
                         .requestMatchers(HttpMethod.POST, "/checkOut").permitAll() // Optional: restrict this
 
-                                .requestMatchers("/ordersByUser/{userId}").permitAll()
-                                .requestMatchers("/orders-all").permitAll()
+                        .requestMatchers("/ordersByUser/{userId}").permitAll()
+                        .requestMatchers("/orders-all").permitAll()
 
                         .requestMatchers("/order/{orderId}").permitAll()
 

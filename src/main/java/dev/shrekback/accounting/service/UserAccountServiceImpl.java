@@ -33,7 +33,7 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
     @Value("${paypal.client-id}")
     private String clientId;
 
-    @Value("${paypal.secret}")
+    @Value("${paypal.client-secret}")
     private String secret;
 
     @Value("${paypal.base-url}")
