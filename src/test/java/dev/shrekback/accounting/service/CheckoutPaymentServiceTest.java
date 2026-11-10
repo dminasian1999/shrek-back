@@ -99,6 +99,23 @@ class CheckoutPaymentServiceTest {
     }
 
     @Test
+    void successfulCapturePersistsTotalOfTheRemainingCart() throws Exception {
+        var remaining = new dev.shrekback.accounting.model.UserAccount("owner", "hashed", "Buyer", "One");
+        Post addedProduct = new Post(); addedProduct.setId("added-later"); addedProduct.setPrice(8.25);
+        remaining.getCart().getItems().add(new dev.shrekback.accounting.model.Item("later-cart", addedProduct, "Standard", 3));
+        remaining.getCart().setTotalPrice(999.0);
+        when(mongo.findById("owner", dev.shrekback.accounting.model.UserAccount.class)).thenReturn(remaining);
+        when(gateway.captureOrder(eq("paypal-id"), anyString())).thenReturn(captured("USD", "27.18"));
+
+        assertEquals(OrderStatus.PAID, service.capturePayment("paypal-id", "owner").getStatus());
+
+        var updates = org.mockito.ArgumentCaptor.forClass(UpdateDefinition.class);
+        verify(mongo, times(2)).updateFirst(any(Query.class), updates.capture(), eq(dev.shrekback.accounting.model.UserAccount.class));
+        assertEquals(24.75, ((org.bson.Document) updates.getAllValues().get(1).getUpdateObject().get("$set")).get("cart.totalPrice"));
+        assertEquals(1, remaining.getCart().getItems().size());
+    }
+
+    @Test
     void unapprovedPaymentCannotReserveInventory() throws Exception {
         when(gateway.getOrder("paypal-id")).thenReturn(new com.paypal.orders.Order().id("paypal-id").status("CREATED"));
         assertThrows(ResponseStatusException.class, () -> service.capturePayment("paypal-id", "owner"));

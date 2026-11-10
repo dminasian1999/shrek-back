@@ -126,6 +126,12 @@ public class CheckoutPaymentService {
                 mongo.updateFirst(Query.query(Criteria.where("_id").is(userId)),
                         new Update().pull("cart.items", purchased).inc("cartVersion", 1), UserAccount.class);
             }
+            UserAccount remaining = mongo.findById(userId, UserAccount.class);
+            if (remaining != null && remaining.getCart() != null) {
+                remaining.getCart().recalculateTotalPrice();
+                mongo.updateFirst(Query.query(Criteria.where("_id").is(userId)),
+                        Update.update("cart.totalPrice", remaining.getCart().getTotalPrice()), UserAccount.class);
+            }
         });
         return mapper.map(orders.findById(order.getOrderId()).orElseThrow(CheckoutPaymentService::notFound), OrderDto.class);
     }
