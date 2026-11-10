@@ -1,6 +1,6 @@
 # Audit implementation notes — November 10, 2026
 
-The paired branches in shrek-front and shrek-back are both named `codex/full-stack-audit`. Deploy together after the migration steps in README. GitHub's connected integration rejected branch creation with HTTP403 `Resource not accessible by integration`; native Git push also returned403. Draft PR publication is blocked by repository write access, rather than unfinished implementation.
+The paired branches are published as `codex/full-stack-audit`: [frontend](https://github.com/dminasian1999/shrek-front/tree/codex/full-stack-audit) and [backend](https://github.com/dminasian1999/shrek-back/tree/codex/full-stack-audit). GitHub access was restored after reconnecting the integration. Deploy this backend first, then the frontend, after the migration steps in README; keep payments disabled until sandbox verification passes.
 
 ## Most important changes
 
