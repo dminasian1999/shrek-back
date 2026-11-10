@@ -163,10 +163,14 @@ class CheckoutMongoIntegrationTest {
         assertEquals(3, stock(product.getId()));
         assertEquals(8, stock(laterProduct.getId()));
         assertEquals(Set.of(laterAddition.getCartItemId()), cartItemIds());
+        assertEquals(7.50, users.findById(userId).orElseThrow().getCart().getTotalPrice(),
+                "The persisted cart total must reflect only the unpurchased addition");
 
         assertEquals(OrderStatus.PAID, payments.capturePayment(paypalId, userId).getStatus());
         assertEquals(3, stock(product.getId()), "A retry must never reserve the same stock twice");
         assertEquals(Set.of(laterAddition.getCartItemId()), cartItemIds());
+        assertEquals(7.50, users.findById(userId).orElseThrow().getCart().getTotalPrice(),
+                "The persisted cart total must reflect only the unpurchased addition");
         verify(gateway, times(1)).createOrder(anyString(), eq("USD"), eq("42.90"), eq(snapshot.getOrderId()));
         verify(gateway, times(1)).getOrder(paypalId);
         verify(gateway, times(1)).captureOrder(eq(paypalId), anyString());
