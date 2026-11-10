@@ -82,9 +82,14 @@ public class UserAccountController {
     // Change password for authenticated user
     @PutMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void changePassword(Principal principal, @RequestHeader("X-Password") String newPassword) {
+    public void changePassword(Principal principal,
+                               @RequestBody(required = false) ChangePasswordRequest request,
+                               @RequestHeader(value = "X-Password", required = false) String legacyPassword) {
+        String newPassword = request == null ? legacyPassword : request.newPassword();
         userAccountService.changePassword(principal.getName(), newPassword);
     }
+
+    public record ChangePasswordRequest(String newPassword) { }
 
     // Request password recovery link by username
     @GetMapping("/password/recovery/{username}")
