@@ -1,7 +1,6 @@
 package dev.shrekback.security;
 
-import dev.shrekback.accounting.model.Role;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -11,107 +10,64 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
-@RequiredArgsConstructor
 public class AuthorizationConfiguration {
+    private static WebExpressionAuthorizationManager owner(String variable) {
+        return new WebExpressionAuthorizationManager("#" + variable + " == authentication.name");
+    }
 
     @Bean
     public SecurityFilterChain web(HttpSecurity http) throws Exception {
-        http
-                .httpBasic(Customizer.withDefaults())
+        http.httpBasic(Customizer.withDefaults())
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+                // The SPA sends explicit Authorization headers. Never create a session cookie.
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/parser/countries").permitAll()
-
-                        .requestMatchers("/parser/{index}/{csv}").permitAll()
-                        .requestMatchers("/parser-ems/{index}/{csv}").permitAll()
-                        .requestMatchers("/parser-eco/{index}/{csv}").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/shippingCost/{country}/{weight}").permitAll()
-
-                        // Public endpoints
-                        .requestMatchers(
-                                "/users/register",
-                                "/posts",
-                                "/posts/wishList",
-                                "/posts/receipts",
-                                "/posts/criteria/**",
-                                "/posts/type/**",
-                                "/post/{id}"
-                        ).permitAll()
-                        .requestMatchers("/users/password/recovery/**").permitAll()
-
-                        // Admin-only endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/paypal/orders").permitAll() // Optional: restrict this
-                        .requestMatchers(HttpMethod.POST, "/api/paypal/orders/{orderId}/capture").permitAll() // Optional: restrict this
-
-                        .requestMatchers(HttpMethod.POST, "/posts/search").permitAll() // Optional: restrict this
-                        .requestMatchers("/users/{username}/roles/{role}")
-                        .hasRole(Role.ADMINISTRATOR.name())
-                        .requestMatchers(HttpMethod.POST, "/checkOut").permitAll() // Optional: restrict this
-
-                        .requestMatchers("/ordersByUser/{userId}").permitAll()
-                        .requestMatchers("/orders-all").permitAll()
-
-                        .requestMatchers("/order/{orderId}").permitAll()
-
-                        // User-specific endpoints (authorization by path variable)
-                        .requestMatchers(HttpMethod.PUT, "/users/{username}/wishList/{productId}")
-                        .permitAll().requestMatchers(HttpMethod.DELETE, "/users/{username}/wishList/{productId}")
-                        .access(new WebExpressionAuthorizationManager("#username == authentication.name"))
-                        .requestMatchers(HttpMethod.POST, "/users/payment/capture")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/shipping")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.POST, "/users/{username}/payment/createOrder")
-                        .access(new WebExpressionAuthorizationManager("#username == authentication.name"))
-                        .requestMatchers(HttpMethod.PUT, "/payment-method/{login}")
-                        .access(new WebExpressionAuthorizationManager("#login == authentication.name"))
-
-                        .requestMatchers(HttpMethod.PUT, "/users/{username}/cartList/{cartItemId}/update/{isAdd}")
-                        .access(new WebExpressionAuthorizationManager("#username == authentication.name"))
-
-                        .requestMatchers(HttpMethod.PUT, "/users/{username}/cartList")
-                        .access(new WebExpressionAuthorizationManager("#username == authentication.name"))
-                        .requestMatchers(HttpMethod.DELETE, "/users/{username}/cartList")
-                        .access(new WebExpressionAuthorizationManager("#username == authentication.name"))
-
-                        .requestMatchers(HttpMethod.POST, "/users/address/{login}")
-                        .access(new WebExpressionAuthorizationManager("#login == authentication.name"))
-
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/posts", "/post/{id}", "/posts/category/**",
+                                "/posts/criteria/**", "/posts/type/**", "/parser/countries",
+                                "/shippingCost/{country}/{weight}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/users/register", "/posts/search", "/posts/wishList").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/users/password/recovery/{username}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/users/password/recovery/{token}").permitAll()
+                        .requestMatchers("/users/{username}/roles/{role}", "/orders-all",
+                                "/parser/**", "/parser-ems/**", "/parser-eco/**").hasRole("ADMINISTRATOR")
+                        .requestMatchers(HttpMethod.GET, "/users").hasRole("ADMINISTRATOR")
+                        .requestMatchers("/users/{username}/wishList/**", "/users/{username}/cartList/**")
+                            .access(owner("username"))
+                        .requestMatchers("/users/address/{login}", "/users/payment-method/{login}")
+                            .access(owner("login"))
                         .requestMatchers(HttpMethod.DELETE, "/users/{login}")
-                        .access(new WebExpressionAuthorizationManager(
-                                "#login == authentication.name or hasRole('ADMINISTRATOR')"))
-
-                        // Post management endpoints (moderators)
-                        .requestMatchers(HttpMethod.POST, "/post/{author}")
-                        .hasRole(Role.MODERATOR.name())
-                        .requestMatchers(HttpMethod.POST, "/post/file/upload")
-                        .hasRole(Role.MODERATOR.name())
-                        .requestMatchers("/post/file/delete/{file}")
-                        .hasRole(Role.MODERATOR.name())
-                        .requestMatchers(HttpMethod.DELETE, "/post/{id}")
-                        .hasRole(Role.MODERATOR.name())
-
-                        // Update post (optional, currently open to all)
-                        .requestMatchers(HttpMethod.PUT, "/post/{id}").permitAll()
-
-                        // User's own posts
-                        .requestMatchers("/posts/{author}")
-                        .access(new WebExpressionAuthorizationManager("#author == authentication.name"))
-
-                        // Comments
-                        .requestMatchers(HttpMethod.PUT, "/post/{id}/comment/{author}")
-                        .access(new WebExpressionAuthorizationManager("#author == authentication.name"))
-                        .requestMatchers(HttpMethod.DELETE, "/post/{id}/comment")
-                        .hasRole(Role.MODERATOR.name())
-
-                        // Catch-all: everything else must be authenticated
-                        .anyRequest().authenticated()
-                );
-
+                            .access(new WebExpressionAuthorizationManager("#login == authentication.name or hasRole('ADMINISTRATOR')"))
+                        .requestMatchers("/ordersByUser/{userId}")
+                            .access(new WebExpressionAuthorizationManager("#userId == authentication.name or hasRole('ADMINISTRATOR')"))
+                        .requestMatchers(HttpMethod.POST, "/post/file/upload", "/post/{author}").hasAnyRole("MODERATOR", "ADMINISTRATOR")
+                        .requestMatchers(HttpMethod.PUT, "/post/{id}").hasAnyRole("MODERATOR", "ADMINISTRATOR")
+                        .requestMatchers(HttpMethod.DELETE, "/post/{id}", "/post/file/delete/{file}").hasAnyRole("MODERATOR", "ADMINISTRATOR")
+                        // Legacy persistence/capture bypasses must never bypass the verified checkout flow.
+                        .requestMatchers("/saveOrder/**", "/users/payment/capture").denyAll()
+                        .anyRequest().authenticated());
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,https://shrek-front.vercel.app,https://gejekoushiangifts.vercel.app}") String origins) {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Password", "X-Requested-With"));
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

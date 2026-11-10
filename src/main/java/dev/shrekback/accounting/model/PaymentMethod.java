@@ -11,6 +11,8 @@ public class PaymentMethod {
     private String cardname;
     private String cardtype;
     private String cardno;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @org.springframework.data.annotation.Transient
     private String cvv;
     private String exdate;
 }

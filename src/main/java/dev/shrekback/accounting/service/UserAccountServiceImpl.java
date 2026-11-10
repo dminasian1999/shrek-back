@@ -8,48 +8,46 @@ import dev.shrekback.accounting.dto.exceptions.TokenExpiredExeption;
 import dev.shrekback.accounting.dto.exceptions.UserExistsException;
 import dev.shrekback.accounting.dto.exceptions.UserNotFoundException;
 import dev.shrekback.accounting.model.*;
+import dev.shrekback.post.dao.PostRepository;
+import dev.shrekback.post.model.Post;
+import dev.shrekback.post.dto.SizeQuantityDto;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UserAccountServiceImpl implements UserAccountService, CommandLineRunner {
-
-    @Value("${paypal.client-id}")
-    private String clientId;
-
-    @Value("${paypal.client-secret}")
-    private String secret;
-
-    @Value("${paypal.base-url}")
-    private String baseUrl;
+public class UserAccountServiceImpl implements UserAccountService {
 
     private final ModelMapper modelMapper;
     private final PasswordEncoder passwordEncoder;
     private final UserAccountRepository userAccountRepository;
     private final UserTokenRepository userTokenRepository;
+    private final MongoTemplate mongoTemplate;
+    private final PostRepository postRepository;
 
-    private final RestTemplate restTemplate = new RestTemplate();
 
     // --- User Account Management ---
 
     @Override
     public void changePassword(String login, String newPassword) {
+        validatePassword(newPassword);
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
         userAccount.setPassword(passwordEncoder.encode(newPassword));
@@ -66,8 +64,8 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
     }
 
     private void checkEmail(String email) {
-        String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
-        if (!Pattern.matches(emailRegex, email)) {
+        String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,63}$";
+        if (email == null || email.length() > 254 || !Pattern.matches(emailRegex, email)) {
             throw new InvalidEmailExeption();
         }
     }
@@ -83,13 +81,15 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
     public UserDto getUser(String login) {
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
+        userAccount.getCart().recalculateTotalPrice();
         return modelMapper.map(userAccount, UserDto.class);
     }
 
     @Override
     public void recoveryPassword(String token, String newPassword) {
-        UserToken userToken = userTokenRepository.findById(token)
-                .orElseThrow(TokenExpiredExeption::new);
+        validatePassword(newPassword);
+        UserToken userToken = mongoTemplate.findAndRemove(Query.query(Criteria.where("_id").is(token)), UserToken.class);
+        if (userToken == null) throw new TokenExpiredExeption();
 
         if (LocalDateTime.now().isAfter(userToken.getExpirationDate())) {
             userTokenRepository.delete(userToken);
@@ -101,22 +101,26 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
 
     @Override
     public void recoveryPasswordLink(String login) {
-        userAccountRepository.findById(login).orElseThrow(UserNotFoundException::new);
-        UserToken userToken = new UserToken(login);
-        userTokenRepository.save(userToken);
-        // Optionally sendRecoveryEmail(login, userToken.getToken());
+        // No mail transport is configured. Never promise a reset that cannot be delivered.
+        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Password recovery is currently unavailable. Please contact the shop.");
     }
 
     @Override
     public UserDto register(UserRegisterDto userRegisterDto) {
+        checkEmail(userRegisterDto.getLogin());
+        validatePassword(userRegisterDto.getPassword());
+        validateName(userRegisterDto.getFirstName());
+        validateName(userRegisterDto.getLastName());
         if (userAccountRepository.existsById(userRegisterDto.getLogin())) {
             throw new UserExistsException();
         }
-        checkEmail(userRegisterDto.getLogin());
-
         UserAccount userAccount = modelMapper.map(userRegisterDto, UserAccount.class);
         userAccount.setPassword(passwordEncoder.encode(userRegisterDto.getPassword()));
-        userAccountRepository.save(userAccount);
+        try {
+            userAccountRepository.insert(userAccount);
+        } catch (DuplicateKeyException duplicate) {
+            throw new UserExistsException();
+        }
 
         return modelMapper.map(userAccount, UserDto.class);
     }
@@ -129,14 +133,15 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
         return modelMapper.map(userAccount, UserDto.class);
     }
 
-    @Override
-    public void run(String... args) {
-        if (!userAccountRepository.existsById("admin")) {
-            String password = passwordEncoder.encode("admin");
-            UserAccount userAccount = new UserAccount("admin", password, "", "");
-            userAccount.addRole("ADMINISTRATOR");
-            userAccount.addRole("MODERATOR");
-            userAccountRepository.save(userAccount);
+    private void validatePassword(String password) {
+        if (password == null || password.length() < 8 || password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must contain at least 8 characters and at most 72 UTF-8 bytes.");
+        }
+    }
+
+    private void validateName(String name) {
+        if (name == null || name.isBlank() || name.length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "First and last name are required and must be at most 100 characters.");
         }
     }
 
@@ -146,9 +151,11 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
                 .orElseThrow(UserNotFoundException::new);
 
         if (userEditDto.getFirstName() != null) {
+            validateName(userEditDto.getFirstName());
             userAccount.setFirstName(userEditDto.getFirstName());
         }
         if (userEditDto.getLastName() != null) {
+            validateName(userEditDto.getLastName());
             userAccount.setLastName(userEditDto.getLastName());
         }
 
@@ -158,25 +165,7 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
 
     @Override
     public UserDto updatePaymentMethod(String login, PaymentMethodDto dto) {
-        UserAccount userAccount = userAccountRepository.findById(login)
-                .orElseThrow(UserNotFoundException::new);
-
-        PaymentMethod payment = new PaymentMethod();
-        payment.setCardtype(dto.getCardtype());
-        payment.setCardname(dto.getCardname());
-        payment.setCardno(maskCardNumber(dto.getCardno()));
-        payment.setExdate(dto.getExdate());
-        payment.setCvv(dto.getCvv());
-
-        userAccount.setPaymentMethod(payment);
-        userAccountRepository.save(userAccount);
-
-        return modelMapper.map(userAccount, UserDto.class);
-    }
-
-    private String maskCardNumber(String cardno) {
-        if (cardno == null || cardno.length() < 4) return "****";
-        return "**** **** **** " + cardno.substring(cardno.length() - 4);
+        throw new ResponseStatusException(HttpStatus.GONE, "Card details are not stored by this shop. Please use the secure PayPal checkout.");
     }
 
     @Override
@@ -184,6 +173,13 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
 
+        validateField(dto.getFullName(), "Full name", 150, true);
+        validateField(dto.getStreet(), "Street address", 250, true);
+        validateField(dto.getCity(), "City", 100, true);
+        validateField(dto.getState(), "State", 100, false);
+        validateField(dto.getZipCode(), "Postal code", 20, true);
+        validateField(dto.getCountry(), "Country", 100, true);
+        validateField(dto.getPhone(), "Phone", 40, false);
         Address address = new Address();
         address.setFullName(dto.getFullName());
         address.setStreet(dto.getStreet());
@@ -204,6 +200,9 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
 
+        if (isAdd && !postRepository.existsById(productId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This product is no longer available.");
+        }
         boolean updated = isAdd ? userAccount.addWishList(productId) : userAccount.removeWishList(productId);
         if (updated) userAccountRepository.save(userAccount);
 
@@ -215,11 +214,32 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
 
-        boolean updated = isAdd ?
-                userAccount.getCart().addCartEntry(item) :
-                userAccount.getCart().removeCartEntry(item);
-
-        if (updated) userAccountRepository.save(userAccount);
+        if (item == null || item.getCartItemId() == null || item.getCartItemId().isBlank() || item.getCartItemId().length() > 250) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid cart item is required.");
+        }
+        if (isAdd) {
+            if (item.getProduct() == null || item.getProduct().getId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A product is required.");
+            }
+            Post product = postRepository.findById(item.getProduct().getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "This product is no longer available."));
+            Item existing = userAccount.getCart().getItems().stream()
+                    .filter(entry -> entry.getCartItemId().equals(item.getCartItemId())).findFirst().orElse(null);
+            if (existing != null && (!existing.getProduct().getId().equals(product.getId())
+                    || !Objects.equals(existing.getSelectedSize(), item.getSelectedSize()) && item.getSelectedSize() != null)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cart item identity does not match the product.");
+            }
+            int quantity = item.getQuantity() + (existing == null ? 0 : existing.getQuantity());
+            if (item.getQuantity() < 1 || quantity > 99) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantity must be between 1 and 99.");
+            }
+            String size = resolveSize(product, existing == null ? item.getSelectedSize() : existing.getSelectedSize(), quantity);
+            userAccount.getCart().getItems().remove(existing);
+            userAccount.getCart().addCartEntry(new Item(item.getCartItemId(), product, size, quantity));
+        } else {
+            userAccount.getCart().removeCartEntry(item);
+        }
+        userAccountRepository.save(userAccount);
 
         return modelMapper.map(userAccount, UserDto.class);
     }
@@ -229,63 +249,45 @@ public class UserAccountServiceImpl implements UserAccountService, CommandLineRu
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
 
-        boolean updated = userAccount.getCart().updateCartList(cartItemId, isAdd);
-        if (updated) userAccountRepository.save(userAccount);
+        Item item = userAccount.getCart().getItems().stream().filter(entry -> entry.getCartItemId().equals(cartItemId)).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cart item not found."));
+        if (isAdd) {
+            Post product = postRepository.findById(item.getProduct().getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "This product is no longer available."));
+            resolveSize(product, item.getSelectedSize(), item.getQuantity() + 1);
+        }
+        userAccount.getCart().updateCartList(cartItemId, isAdd);
+        userAccountRepository.save(userAccount);
 
         return modelMapper.map(userAccount, UserDto.class);
     }
 
-    // --- PayPal Integration ---
-
-    @Override
-    public boolean captureOrder(String orderId) {
-        try {
-            String accessToken = getAccessToken();
-            if (accessToken == null) {
-                log.error("Failed to retrieve PayPal access token");
-                return false;
-            }
-
-            String captureUrl = baseUrl + "/v2/checkout/orders/" + orderId + "/capture";
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(accessToken);
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<String> request = new HttpEntity<>(null, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(captureUrl, request, String.class);
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("Order captured successfully: {}", response.getBody());
-                return true;
-            } else {
-                log.error("Failed to capture order: {}", response.getBody());
-                return false;
-            }
-        } catch (Exception e) {
-            log.error("Exception while capturing order: ", e);
-            return false;
+    private void validateField(String value, String name, int maxLength, boolean required) {
+        if ((required && (value == null || value.isBlank())) || (value != null && value.length() > maxLength)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, name + " is required and must contain no more than " + maxLength + " characters.");
         }
     }
 
-    private String getAccessToken() {
-        try {
-            String tokenUrl = baseUrl + "/v1/oauth2/token";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setBasicAuth(clientId, secret, StandardCharsets.UTF_8);
-
-            HttpEntity<String> request = new HttpEntity<>("grant_type=client_credentials", headers);
-
-            ResponseEntity<Map> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, request, Map.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return (String) response.getBody().get("access_token");
-            }
-
-            log.error("Failed to get PayPal token: {}", response.getBody());
-        } catch (Exception e) {
-            log.error("Exception while getting PayPal token: ", e);
+    private String resolveSize(Post product, String selectedSize, int quantity) {
+        if (quantity < 1 || quantity > 99) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantity must be between 1 and 99.");
+        List<SizeQuantityDto> variants = product.getSizeQuantities();
+        if (variants == null || variants.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This product is currently out of stock.");
         }
-        return null;
+        String size = selectedSize;
+        if ((size == null || size.isBlank()) && variants.size() == 1) size = variants.get(0).getSize();
+        final String requestedSize = size;
+        SizeQuantityDto variant = variants.stream().filter(entry -> Objects.equals(entry.getSize(), requestedSize)).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please select an available size."));
+        if (variant.getQuantity() == null || variant.getQuantity() < quantity) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "The requested quantity is not available.");
+        }
+        return size;
+    }
+
+    // Legacy capture is deliberately unavailable: ownership and amount verification live in PayPalService.
+    @Override
+    public boolean captureOrder(String orderId) {
+        throw new ResponseStatusException(HttpStatus.GONE, "Please use the secure checkout flow.");
     }
 }
