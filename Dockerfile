@@ -1,10 +1,13 @@
-FROM maven:3.8.6-eclipse-temurin-17 AS builder
-COPY pom.xml .
+FROM maven:3.9-eclipse-temurin-17 AS builder
+WORKDIR /app
+COPY pom.xml ./
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn --batch-mode --no-transfer-progress clean package -DskipTests
 
-# Stage 2: Create the runtime image
 FROM eclipse-temurin:17-jre-alpine
-COPY --from=builder ./target/shrek-back-0.0.1-SNAPSHOT.jar ./shrek-back.jar
+WORKDIR /app
+RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app app
+COPY --from=builder --chown=10001:10001 /app/target/shrek-back-0.0.1-SNAPSHOT.jar ./shrek-back.jar
+USER 10001:10001
 EXPOSE 8080
-CMD ["java", "-jar", "shrek-back.jar"]
+ENTRYPOINT ["java", "-jar", "shrek-back.jar"]
