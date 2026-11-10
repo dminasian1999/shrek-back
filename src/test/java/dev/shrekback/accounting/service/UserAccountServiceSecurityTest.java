@@ -1,6 +1,9 @@
 package dev.shrekback.accounting.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.client.result.UpdateResult;
+import org.springframework.data.mongodb.core.query.Update;
+import org.mockito.ArgumentCaptor;
 import dev.shrekback.accounting.dao.UserAccountRepository;
 import dev.shrekback.accounting.dao.UserTokenRepository;
 import dev.shrekback.accounting.dto.*;
@@ -34,6 +37,7 @@ class UserAccountServiceSecurityTest {
     UserAccountServiceImpl service;
 
     @BeforeEach void setup() {
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(UserAccount.class))).thenReturn(UpdateResult.acknowledged(1, 1L, null));
         service = new UserAccountServiceImpl(new EComBackConfiguration().getModelMapper(), new BCryptPasswordEncoder(), users, tokens, mongo, products);
     }
 
@@ -77,11 +81,39 @@ class UserAccountServiceSecurityTest {
         verifyNoInteractions(users);
     }
 
+    @Test void staleCartUpdateFailsInsteadOfOverwritingConcurrentPaymentCleanup() {
+        UserAccount buyer = new UserAccount("buyer", "hash", "Test", "Buyer");
+        when(users.findById("buyer")).thenReturn(Optional.of(buyer));
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(UserAccount.class)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null));
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> service.changeCartList("buyer", new Item("line", null, null, 0), false));
+        assertEquals(409, error.getStatusCode().value());
+        ArgumentCaptor<Query> query = ArgumentCaptor.forClass(Query.class);
+        verify(mongo).updateFirst(query.capture(), any(Update.class), eq(UserAccount.class));
+        assertTrue(query.getValue().getQueryObject().toJson().contains("cartVersion"));
+        verify(users, never()).save(any());
+    }
+
+    @Test void profileUpdateWritesOnlyRequestedFieldsAndPreservesCart() throws Exception {
+        when(users.findById("buyer")).thenReturn(Optional.of(new UserAccount("buyer", "hash", "Test", "Buyer")));
+        UserEditDto dto = json.readValue("{\"firstName\":\"Updated\"}", UserEditDto.class);
+        service.updateUser("buyer", dto);
+        ArgumentCaptor<Update> change = ArgumentCaptor.forClass(Update.class);
+        verify(mongo).updateFirst(any(Query.class), change.capture(), eq(UserAccount.class));
+        assertEquals(java.util.Set.of("firstName"), change.getValue().getUpdateObject().get("$set", org.bson.Document.class).keySet());
+        verify(users, never()).save(any());
+    }
+
     @Test void recoveryTokenIsConsumedAtomicallyBeforePasswordChanges() {
         when(mongo.findAndRemove(any(Query.class), eq(UserToken.class))).thenReturn(new UserToken("buyer")).thenReturn(null);
         when(users.findById("buyer")).thenReturn(Optional.of(new UserAccount("buyer", "old", "Test", "Buyer")));
         service.recoveryPassword("token", "new-password");
         assertThrows(dev.shrekback.accounting.dto.exceptions.TokenExpiredExeption.class, () -> service.recoveryPassword("token", "new-password"));
-        verify(users, times(1)).save(any());
+        ArgumentCaptor<Update> change = ArgumentCaptor.forClass(Update.class);
+        verify(mongo, times(1)).updateFirst(any(Query.class), change.capture(), eq(UserAccount.class));
+        assertTrue(change.getValue().getUpdateObject().toJson().contains("password"));
+        assertFalse(change.getValue().getUpdateObject().toJson().contains("cart"));
+        verify(users, never()).save(any());
     }
 }

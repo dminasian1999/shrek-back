@@ -23,6 +23,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import com.mongodb.client.result.UpdateResult;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -50,8 +52,8 @@ public class UserAccountServiceImpl implements UserAccountService {
         validatePassword(newPassword);
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
-        userAccount.setPassword(passwordEncoder.encode(newPassword));
-        userAccountRepository.save(userAccount);
+        String encoded = passwordEncoder.encode(newPassword);
+        updateFields(login, Update.update("password", encoded));
     }
 
     @Override
@@ -59,8 +61,8 @@ public class UserAccountServiceImpl implements UserAccountService {
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
 
-        boolean updated = isAddRole ? userAccount.addRole(role) : userAccount.removeRole(role);
-        if (updated) userAccountRepository.save(userAccount);
+        Role changed = Role.valueOf(role.toUpperCase(java.util.Locale.ROOT));
+        updateFields(login, isAddRole ? new Update().addToSet("roles", changed) : new Update().pull("roles", changed));
     }
 
     private void checkEmail(String email) {
@@ -150,16 +152,19 @@ public class UserAccountServiceImpl implements UserAccountService {
         UserAccount userAccount = userAccountRepository.findById(login)
                 .orElseThrow(UserNotFoundException::new);
 
+        Update update = new Update();
         if (userEditDto.getFirstName() != null) {
+            update.set("firstName", userEditDto.getFirstName());
             validateName(userEditDto.getFirstName());
             userAccount.setFirstName(userEditDto.getFirstName());
         }
         if (userEditDto.getLastName() != null) {
+            update.set("lastName", userEditDto.getLastName());
             validateName(userEditDto.getLastName());
             userAccount.setLastName(userEditDto.getLastName());
         }
 
-        userAccountRepository.save(userAccount);
+        if (!update.getUpdateObject().isEmpty()) updateFields(login, update);
         return modelMapper.map(userAccount, UserDto.class);
     }
 
@@ -190,7 +195,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         address.setPhone(dto.getPhone());
 
         userAccount.setAddress(address);
-        userAccountRepository.save(userAccount);
+        updateFields(login, Update.update("address", address));
 
         return modelMapper.map(userAccount, UserDto.class);
     }
@@ -203,8 +208,8 @@ public class UserAccountServiceImpl implements UserAccountService {
         if (isAdd && !postRepository.existsById(productId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This product is no longer available.");
         }
-        boolean updated = isAdd ? userAccount.addWishList(productId) : userAccount.removeWishList(productId);
-        if (updated) userAccountRepository.save(userAccount);
+        if (isAdd) userAccount.addWishList(productId); else userAccount.removeWishList(productId);
+        updateFields(login, isAdd ? new Update().addToSet("wishList", productId) : new Update().pull("wishList", productId));
 
         return modelMapper.map(userAccount, UserDto.class);
     }
@@ -239,7 +244,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         } else {
             userAccount.getCart().removeCartEntry(item);
         }
-        userAccountRepository.save(userAccount);
+        saveCart(userAccount);
 
         return modelMapper.map(userAccount, UserDto.class);
     }
@@ -257,9 +262,26 @@ public class UserAccountServiceImpl implements UserAccountService {
             resolveSize(product, item.getSelectedSize(), item.getQuantity() + 1);
         }
         userAccount.getCart().updateCartList(cartItemId, isAdd);
-        userAccountRepository.save(userAccount);
+        saveCart(userAccount);
 
         return modelMapper.map(userAccount, UserDto.class);
+    }
+
+    private void updateFields(String login, Update update) {
+        UpdateResult result = mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(login)), update, UserAccount.class);
+        if (result.getMatchedCount() != 1) throw new UserNotFoundException();
+    }
+
+    private void saveCart(UserAccount user) {
+        Criteria version = user.getCartVersion() == 0
+                ? new Criteria().orOperator(Criteria.where("cartVersion").is(0L), Criteria.where("cartVersion").exists(false))
+                : Criteria.where("cartVersion").is(user.getCartVersion());
+        Query unchanged = Query.query(new Criteria().andOperator(Criteria.where("_id").is(user.getLogin()), version));
+        UpdateResult result = mongoTemplate.updateFirst(unchanged,
+                Update.update("cart", user.getCart()).inc("cartVersion", 1), UserAccount.class);
+        if (result.getMatchedCount() != 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Your cart changed in another window. Refresh it and try again.");
+        }
     }
 
     private void validateField(String value, String name, int maxLength, boolean required) {
