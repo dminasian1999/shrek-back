@@ -1,43 +1,28 @@
-package dev.shrekback.accounting.controller;// src/main/java/com/example/paypal/PayPalController.java
+package dev.shrekback.accounting.controller;
 
-import dev.shrekback.accounting.service.PayPalService;
+import dev.shrekback.accounting.dto.OrderDto;
+import dev.shrekback.accounting.service.CheckoutPaymentService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Map;
-import java.util.UUID;
+
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/paypal")
-@CrossOrigin // narrow this in production
 public class PayPalController {
+    private final CheckoutPaymentService checkout;
 
-     final PayPalService service;
-
-
-    // Client calls this to create a server-trusted order
     @PostMapping("/orders")
-    public ResponseEntity<Map<String, String>> createOrder(@RequestBody CreateOrderDto dto) throws Exception {
-        String key = UUID.randomUUID().toString();
-        String orderId = service.createOrder(
-                key,
-                dto.currencyCode() == null ? "USD" : dto.currencyCode(),
-                dto.value(),
-                dto.referenceId() == null ? "ref-" + System.currentTimeMillis() : dto.referenceId(),
-                dto.returnUrl(),
-                dto.cancelUrl()
-        );
-        return ResponseEntity.ok(Map.of("orderId", orderId));
+    public Map<String, String> createOrder(@RequestBody CreateOrderDto request, Authentication authentication) {
+        return Map.of("orderId", checkout.createPayment(request.orderId(), authentication.getName()));
     }
 
-    // Client calls this after onApprove with orderId to perform the capture
     @PostMapping("/orders/{orderId}/capture")
-    public ResponseEntity<?> capture(@PathVariable String orderId) throws Exception {
-        var order = service.captureOrder(orderId, UUID.randomUUID().toString());
-        // TODO: persist order/captures, mark your order paid if status COMPLETE
-        return ResponseEntity.ok(order);
+    public OrderDto capture(@PathVariable String orderId, Authentication authentication) {
+        return checkout.capturePayment(orderId, authentication.getName());
     }
 
-    public record CreateOrderDto(String value, String currencyCode, String referenceId,
-                                 String returnUrl, String cancelUrl) {}
+    public record CreateOrderDto(String orderId) { }
 }

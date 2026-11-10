@@ -1,13 +1,7 @@
 package dev.shrekback.post.service;
 
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
 import dev.shrekback.post.dao.PostRepository;
+import dev.shrekback.file.service.S3Service;
 import dev.shrekback.post.dto.NewPostDto;
 import dev.shrekback.accounting.dto.OrderDto;
 import dev.shrekback.post.dto.PostDto;
@@ -16,7 +10,6 @@ import dev.shrekback.post.dto.exceptions.PostNotFoundException;
 import dev.shrekback.post.model.Post;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -24,8 +17,12 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.ArrayList;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -39,14 +36,11 @@ public class PostServiceImpl implements PostService {
     private final MongoTemplate mongoTemplate;
     private final PostRepository postRepository;
 
-    @Value("${aws.s3.access.key}")
-    private String accessKey;
-
-    @Value("${aws.s3.secret.key}")
-    private String secretKey;
+    private final S3Service s3Service;
 
     @Override
     public PostDto addNewPost(String author, NewPostDto newPostDto) {
+        validateProductInput(newPostDto, false);
         Post post = modelMapper.map(newPostDto, Post.class);
 
 
@@ -54,36 +48,9 @@ public class PostServiceImpl implements PostService {
         return modelMapper.map(post, PostDto.class);
     }
 
-    private String saveFilePicToS3(MultipartFile file) {
-        try {
-            String s3FileName = file.getOriginalFilename();
-            BasicAWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secretKey);
-            AmazonS3 amazonS3Client = AmazonS3ClientBuilder.standard()
-                    .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
-                    .withRegion(Regions.US_EAST_1)
-                    .build();
-
-            InputStream inputStream = file.getInputStream();
-            ObjectMetadata objectMetadata = new ObjectMetadata();
-            objectMetadata.setContentType(file.getContentType());
-            String bucketName = "file-upload-dav";
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, s3FileName, inputStream, objectMetadata);
-            amazonS3Client.putObject(putObjectRequest);
-            return String.format("https://%s.s3.amazonaws.com/%s", bucketName, s3FileName);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to upload file to S3", e);
-        }
-    }
-
     @Override
     public void deleteFileFromS3(String fileName) {
-        BasicAWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secretKey);
-        AmazonS3 amazonS3Client = AmazonS3ClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
-                .withRegion(Regions.US_EAST_1)
-                .build();
-        String bucketName = "file-upload-dav";
-        amazonS3Client.deleteObject(bucketName, fileName);
+        s3Service.deleteFile(fileName);
     }
 
     @Override
@@ -124,33 +91,33 @@ public class PostServiceImpl implements PostService {
     }
     @Override
     public List<PostDto> findPostsWithCriteriaAndSort(QueryDto queryDto) {
+        validateSearch(queryDto);
         Query mongoQuery = new Query();
 
         if (queryDto.getId() != null && !queryDto.getId().isBlank()) {
-            mongoQuery.addCriteria(Criteria.where("id").regex(Pattern.compile(queryDto.getId(), Pattern.CASE_INSENSITIVE)));
+            mongoQuery.addCriteria(Criteria.where("id").regex(Pattern.compile(Pattern.quote(queryDto.getId()), Pattern.CASE_INSENSITIVE)));
         }
         if (queryDto.getName() != null && !queryDto.getName().isBlank()) {
-            mongoQuery.addCriteria(Criteria.where("name").regex(Pattern.compile(queryDto.getName(), Pattern.CASE_INSENSITIVE)));
+            mongoQuery.addCriteria(Criteria.where("name").regex(Pattern.compile(Pattern.quote(queryDto.getName()), Pattern.CASE_INSENSITIVE)));
         }
         if (queryDto.getCategory() != null && !queryDto.getCategory().isBlank()) {
-            mongoQuery.addCriteria(Criteria.where("category").regex(Pattern.compile(queryDto.getCategory(), Pattern.CASE_INSENSITIVE)));
+            mongoQuery.addCriteria(Criteria.where("category").regex(Pattern.compile(Pattern.quote(queryDto.getCategory()), Pattern.CASE_INSENSITIVE)));
         }
         if (queryDto.getSubCategory() != null && !queryDto.getSubCategory().isBlank()) {
-            mongoQuery.addCriteria(Criteria.where("subCategory").regex(Pattern.compile(queryDto.getSubCategory(), Pattern.CASE_INSENSITIVE)));
+            mongoQuery.addCriteria(Criteria.where("subCategory").regex(Pattern.compile(Pattern.quote(queryDto.getSubCategory()), Pattern.CASE_INSENSITIVE)));
         }
         if (queryDto.getColor() != null && !queryDto.getColor().isBlank()) {
-            mongoQuery.addCriteria(Criteria.where("color").regex(Pattern.compile(queryDto.getColor(), Pattern.CASE_INSENSITIVE)));
+            mongoQuery.addCriteria(Criteria.where("color").regex(Pattern.compile(Pattern.quote(queryDto.getColor()), Pattern.CASE_INSENSITIVE)));
         }
         if (queryDto.getDesc() != null && !queryDto.getDesc().isBlank()) {
-            mongoQuery.addCriteria(Criteria.where("desc").regex(Pattern.compile(queryDto.getDesc(), Pattern.CASE_INSENSITIVE)));
+            mongoQuery.addCriteria(Criteria.where("desc").regex(Pattern.compile(Pattern.quote(queryDto.getDesc()), Pattern.CASE_INSENSITIVE)));
         }
 
-        if (queryDto.getDateFrom() != null) {
-            mongoQuery.addCriteria(Criteria.where("dateCreated").gte(queryDto.getDateFrom().atStartOfDay()));
-        }
-
-        if (queryDto.getDateTo() != null) {
-            mongoQuery.addCriteria(Criteria.where("dateCreated").lte(queryDto.getDateTo().atTime(23, 59, 59)));
+        if (queryDto.getDateFrom() != null || queryDto.getDateTo() != null) {
+            Criteria dates = Criteria.where("dateCreated");
+            if (queryDto.getDateFrom() != null) dates.gte(queryDto.getDateFrom().atStartOfDay());
+            if (queryDto.getDateTo() != null) dates.lt(queryDto.getDateTo().plusDays(1).atStartOfDay());
+            mongoQuery.addCriteria(dates);
         }
 
         if (queryDto.getMinPrice() != null || queryDto.getMaxPrice() != null) {
@@ -169,7 +136,7 @@ public class PostServiceImpl implements PostService {
 
         // ✅ Handle List<String> materials
         if (queryDto.getMaterial() != null && !queryDto.getMaterial().isEmpty()) {
-            mongoQuery.addCriteria(Criteria.where("material").regex(queryDto.getMaterial()));
+            mongoQuery.addCriteria(Criteria.where("material").regex(Pattern.compile(Pattern.quote(queryDto.getMaterial()), Pattern.CASE_INSENSITIVE)));
         }
 
         // ✅ Sorting
@@ -179,7 +146,7 @@ public class PostServiceImpl implements PostService {
                 ? queryDto.getSortField()
                 : "dateCreated";
 
-        mongoQuery.with(Sort.by(direction, sortField));
+        mongoQuery.with(Sort.by(direction, sortField)).limit(500);
 
         List<Post> posts = mongoTemplate.find(mongoQuery, Post.class);
         return posts.stream()
@@ -187,6 +154,51 @@ public class PostServiceImpl implements PostService {
                 .collect(Collectors.toList());
     }
 
+
+    private static void validateSearch(QueryDto query) {
+        if (query == null) throw invalid("Search details are required.");
+        String[] text = {query.getId(), query.getName(), query.getCategory(), query.getSubCategory(),
+                query.getColor(), query.getDesc(), query.getMaterial()};
+        for (String value : text) if (value != null && value.length() > 200) throw invalid("Search text is too long.");
+        if (query.getSortField() != null && !query.getSortField().isBlank()
+                && !Set.of("name", "price", "dateCreated", "category").contains(query.getSortField())) {
+            throw invalid("Unsupported sort field.");
+        }
+        if ((query.getMinPrice() != null && (!Double.isFinite(query.getMinPrice()) || query.getMinPrice() < 0))
+                || (query.getMaxPrice() != null && (!Double.isFinite(query.getMaxPrice()) || query.getMaxPrice() < 0))
+                || (query.getMinPrice() != null && query.getMaxPrice() != null && query.getMinPrice() > query.getMaxPrice())) {
+            throw invalid("Enter a valid price range.");
+        }
+        if (query.getDateFrom() != null && query.getDateTo() != null && query.getDateFrom().isAfter(query.getDateTo())) {
+            throw invalid("Enter a valid date range.");
+        }
+    }
+
+    private static void validateProductInput(NewPostDto dto, boolean partial) {
+        if (dto == null) throw invalid("Product details are required.");
+        if ((!partial || dto.getName() != null) && (dto.getName() == null || dto.getName().isBlank() || dto.getName().length() > 200)) {
+            throw invalid("Enter a product name of up to 200 characters.");
+        }
+        if ((!partial || dto.getPrice() != null) && (dto.getPrice() == null || !Double.isFinite(dto.getPrice()) || dto.getPrice() <= 0)) {
+            throw invalid("Product price must be a positive number.");
+        }
+        if ((!partial || dto.getWeight() != null) && (dto.getWeight() == null || !Double.isFinite(dto.getWeight()) || dto.getWeight() <= 0 || dto.getWeight() > 30000)) {
+            throw invalid("Product weight must be between 0 and 30000 grams.");
+        }
+        if (dto.getSizeQuantities() != null) {
+            Set<String> sizes = new HashSet<>();
+            for (var stock : dto.getSizeQuantities()) {
+                if (stock == null || stock.getSize() == null || stock.getSize().isBlank() || stock.getSize().length() > 50
+                        || stock.getQuantity() == null || stock.getQuantity() < 0 || !sizes.add(stock.getSize())) {
+                    throw invalid("Each size must be unique and have a nonnegative stock quantity.");
+                }
+            }
+        }
+    }
+
+    private static ResponseStatusException invalid(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
 
     @Override
     public List<PostDto> getAllPosts() {
@@ -205,6 +217,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PostDto updatePost(String id, NewPostDto newPostDto) {
+        validateProductInput(newPostDto, true);
         // Fetch the existing post
         Post post = postRepository.findById(id)
                 .orElseThrow(PostNotFoundException::new);
@@ -250,6 +263,9 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public List<PostDto> findPostsByIds(String[] ids) {
+        if (ids == null || ids.length > 100 || java.util.Arrays.stream(ids).anyMatch(id -> id == null || id.isBlank() || id.length() > 100)) {
+            throw invalid("Provide up to 100 valid product IDs.");
+        }
         return postRepository.findByIdIn(ids)
                 .map(p -> modelMapper.map(p, PostDto.class))
                 .collect(Collectors.toList());
@@ -257,41 +273,8 @@ public class PostServiceImpl implements PostService {
 
 
     @Override
-//    public String saveFiles(MultipartFile file) {
     public String saveFiles(MultipartFile file) {
-        try {
-            String fileName = file.getOriginalFilename();
-            if (fileName == null || file.isEmpty()) {
-                throw new IllegalArgumentException("Invalid file");
-            }
-
-            String contentType = file.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                throw new IllegalArgumentException("Only image files are allowed.");
-            }
-
-            BasicAWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secretKey);
-            AmazonS3 amazonS3Client = AmazonS3ClientBuilder.standard()
-                    .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
-                    .withRegion(Regions.US_EAST_1)
-                    .build();
-
-            InputStream inputStream = file.getInputStream();
-            ObjectMetadata metadata = new ObjectMetadata();
-            metadata.setContentType(contentType);
-            metadata.setContentLength(file.getSize());
-
-            String bucketName = "file-upload-dav";
-            String key = "ecom-sevan/" + fileName;
-
-            amazonS3Client.putObject(new PutObjectRequest(bucketName, key, inputStream, metadata));
-
-            return String.format("https://%s.s3.amazonaws.com/%s", bucketName, key);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("S3 upload failed: " + e.getMessage(), e);
-        }
+        return s3Service.uploadFile(file);
     }
 
     @Override

@@ -9,57 +9,32 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.List;
 
+/** The gateway only receives amounts calculated by the checkout service. */
 @RequiredArgsConstructor
 @Service
 public class PayPalService {
+    private final PayPalHttpClient client;
 
-    final PayPalHttpClient client;
-
-
-    /**
-     * Server-trusted order creation
-     */
-    public String createOrder(String idempotencyKey, String currency, String value,
-                              String referenceId, String returnUrl, String cancelUrl) throws IOException {
-        OrderRequest orderRequest = new OrderRequest();
-        orderRequest.checkoutPaymentIntent("CAPTURE");
-
-        // amount breakdown (optional but recommended)
-        AmountWithBreakdown amt = new AmountWithBreakdown()
-                .currencyCode(currency)
-                .value(value);
-
-        PurchaseUnitRequest pu = new PurchaseUnitRequest()
-                .referenceId(referenceId)
-                .amountWithBreakdown(amt);
-
-        ApplicationContext ctx = new ApplicationContext()
-                .brandName("Your Store")
-                .landingPage("NO_PREFERENCE")
-                .userAction("PAY_NOW")
-                .returnUrl(returnUrl)
-                .cancelUrl(cancelUrl);
-
-        orderRequest.purchaseUnits(List.of(pu));
-        orderRequest.applicationContext(ctx);
-
-        OrdersCreateRequest req = new OrdersCreateRequest();
-        req.header("PayPal-Request-Id", idempotencyKey); // idempotency
-        req.requestBody(orderRequest);
-
-        HttpResponse<Order> response = client.execute(req);
-        return response.result().id(); // pass this back to client to approve
+    public String createOrder(String idempotencyKey, String currency, String value, String referenceId) throws IOException {
+        OrderRequest body = new OrderRequest().checkoutPaymentIntent("CAPTURE")
+                .purchaseUnits(List.of(new PurchaseUnitRequest().referenceId(referenceId)
+                        .amountWithBreakdown(new AmountWithBreakdown().currencyCode(currency).value(value))))
+                .applicationContext(new ApplicationContext().brandName("Gejekoushian Gifts").userAction("PAY_NOW"));
+        OrdersCreateRequest request = new OrdersCreateRequest();
+        request.header("PayPal-Request-Id", idempotencyKey);
+        request.requestBody(body);
+        HttpResponse<Order> response = client.execute(request);
+        return response.result().id();
     }
 
-    /**
-     * Server-side capture after buyer approval
-     */
-    public Order captureOrder(String orderId, String idempotencyKey) throws IOException {
-        OrdersCaptureRequest req = new OrdersCaptureRequest(orderId);
-        req.header("PayPal-Request-Id", idempotencyKey);
-        req.requestBody(new OrderActionRequest());
+    public Order getOrder(String orderId) throws IOException {
+        return client.execute(new OrdersGetRequest(orderId)).result();
+    }
 
-        HttpResponse<Order> response = client.execute(req);
-        return response.result();
+    public Order captureOrder(String orderId, String idempotencyKey) throws IOException {
+        OrdersCaptureRequest request = new OrdersCaptureRequest(orderId);
+        request.header("PayPal-Request-Id", idempotencyKey);
+        request.requestBody(new OrderActionRequest());
+        return client.execute(request).result();
     }
 }

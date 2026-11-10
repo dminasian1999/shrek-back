@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.security.core.Authentication;
 
 
 @RestController
@@ -17,10 +18,8 @@ public class OrderController {
 
 
     @PostMapping("/checkOut")
-    public OrderDto checkOut(@RequestBody OrderDto orderDto) {
-        System.out.println("OrderController:checkOut");
-
-        return orderService.checkOut(orderDto);
+    public OrderDto checkOut(@RequestBody OrderDto orderDto, Authentication authentication) {
+        return orderService.checkOut(authentication.getName(), orderDto);
     }
 
     @GetMapping("/orders-all")
@@ -34,7 +33,9 @@ public class OrderController {
     }
 
     @GetMapping("/order/{orderId}")
-    public OrderDto getOrdersById(@PathVariable String orderId) {
-        return orderService.getOrdersById(orderId);
+    public OrderDto getOrdersById(@PathVariable String orderId, Authentication authentication) {
+        boolean administrator = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMINISTRATOR".equals(authority.getAuthority()));
+        return orderService.getOrdersById(orderId, authentication.getName(), administrator);
     }
 }

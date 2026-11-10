@@ -13,6 +13,9 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import java.nio.file.Path;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -71,7 +74,7 @@ public class SippingServiceImpl implements SippingService {
      */
     @Override
     public boolean addEco(String index, String csv) {
-        try (BufferedReader br = new BufferedReader(new FileReader(csv))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(importFile(csv)))) {
             String headerLine = nextDataLine(br);
             String upTo100Line = nextDataLine(br);
             String upTo250Line = nextDataLine(br);
@@ -160,7 +163,7 @@ public class SippingServiceImpl implements SippingService {
 
     @Override
     public boolean addEms(String index, String csv) {
-        try (BufferedReader br = new BufferedReader(new FileReader(csv))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(importFile(csv)))) {
             String headerLine = nextDataLine(br);
             String halfKgLine = nextDataLine(br);
             String oneKgLine = nextDataLine(br);
@@ -278,7 +281,7 @@ public class SippingServiceImpl implements SippingService {
 
     @Override
     public boolean addCountries(String index, String csv) {
-        try (BufferedReader br = new BufferedReader(new FileReader(csv))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(importFile(csv)))) {
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
@@ -304,49 +307,45 @@ public class SippingServiceImpl implements SippingService {
     }
 
 
+    /** Imports are limited to the known rate files in the application directory. */
+    private static String importFile(String csv) {
+        if (!List.of("ShippingCountries.csv", "EMS.csv", "EMS1.csv", "ECO.csv").contains(csv)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown shipping data file.");
+        }
+        return Path.of(csv).toString();
+    }
+
     @Override
     public Double getShippingCost(String countryName, double weight) {
-        ShippingCountry country = countriesRepository.findById(countryName).orElseThrow(PostNotFoundException::new);
-    System.out.println(country);
-        double ress=0.0;
+        if (countryName == null || countryName.isBlank() || !Double.isFinite(weight) || weight <= 0 || weight > 30000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid country and shipping weight (up to 30 kg).");
+        }
+        ShippingCountry country = countriesRepository.findById(countryName).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shipping is unavailable for this country."));
+        double price;
+        // EcoPost is the standard service for eligible small parcels. EMS is the fallback.
         if (country.getGroupIdEcoPost() > 0 && weight <= 2000) {
-         EcoPost eco =  ecoRepository.findById(String.valueOf(country.getGroupIdEcoPost())).orElseThrow(PostNotFoundException::new);
-
-            if (weight <= 100) {
-                ress =  eco.getPriceUpTo100g();
-            } else if (weight <= 250) {
-                ress = eco.getPriceUpTo250g();
-            } else if (weight <= 500) {
-                ress = eco.getPriceUpTo500g();
-            } else if (weight <= 750) {
-                ress = eco.getPriceUpTo750g();
-            } else if (weight <= 1000) {
-                ress = eco.getPriceUpTo1000g();
-            } else if (weight <= 1500) {
-                ress = eco.getPriceUpTo1500g();
-            } else if (weight <= 2000) {
-                ress = eco.getPriceUpTo2000g();
-            } else {
-                throw new IllegalArgumentException("Weight not supported: " + weight);
-            }
-
+            EcoPost eco = ecoRepository.findById(String.valueOf(country.getGroupIdEcoPost())).orElseThrow(() ->
+                    new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Shipping rates are unavailable."));
+            if (weight <= 100) price = eco.getPriceUpTo100g();
+            else if (weight <= 250) price = eco.getPriceUpTo250g();
+            else if (weight <= 500) price = eco.getPriceUpTo500g();
+            else if (weight <= 750) price = eco.getPriceUpTo750g();
+            else if (weight <= 1000) price = eco.getPriceUpTo1000g();
+            else if (weight <= 1500) price = eco.getPriceUpTo1500g();
+            else price = eco.getPriceUpTo2000g();
+        } else if (country.getGroupIdESM() > 0) {
+            Ems ems = emsRepository.findById(String.valueOf(country.getGroupIdESM())).orElseThrow(() ->
+                    new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Shipping rates are unavailable."));
+            if (weight <= 500) price = ems.getPriceUpTo500g();
+            else if (weight <= 1000) price = ems.getPriceUpTo1000g();
+            else price = ems.getPriceUpTo1000g() + Math.ceil((weight - 1000) / 500.0) * ems.getEachAdditional500g();
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shipping is unavailable for this parcel.");
         }
-        if (country.getGroupIdESM() > 0) {
-            Ems ems =  emsRepository.findById(String.valueOf(country.getGroupIdESM())).orElseThrow(PostNotFoundException::new);
-
-            if (weight <= 500) {
-                ress = ems.getPriceUpTo500g();
-            } else if (weight <= 1000) {
-                ress = ems.getPriceUpTo1000g();
-            } else {
-                double excess = weight - 1000;
-                int blocks = (int) Math.ceil(excess / 500.0); // full or partial 500g blocks
-                ress = ems.getPriceUpTo1000g() + blocks * ems.getEachAdditional500g();
-            }
-
+        if (!Double.isFinite(price) || price <= 0) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Shipping rates are unavailable.");
         }
-
-        return ress;
-
+        return price;
     }
 }

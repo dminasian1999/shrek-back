@@ -15,4 +15,6 @@ public class OrderItem {
     PostDto product;
     int quantity;
     double unitPrice;
+    String selectedSize;
+    String cartItemId;
 }
