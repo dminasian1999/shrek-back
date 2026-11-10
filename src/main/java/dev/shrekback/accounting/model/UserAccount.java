@@ -31,6 +31,9 @@ public class UserAccount {
 
     Cart cart;
 
+    // Compare-and-set guard shared by cart mutations and payment cleanup.
+    long cartVersion;
+
     @Setter
     PaymentMethod paymentMethod; // ✅ Single method
 

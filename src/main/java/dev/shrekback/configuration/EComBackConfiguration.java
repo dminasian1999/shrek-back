@@ -2,6 +2,7 @@ package dev.shrekback.configuration;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
@@ -19,63 +20,17 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class EComBackConfiguration {
-    @Value("${aws.s3.access.key}")
+    @Value("${aws.s3.access.key:}")
     private String accessKey;
 
-    @Value("${aws.s3.secret.key}")
+    @Value("${aws.s3.secret.key:}")
     private String secretKey;
-    @Value("${paypal.client-id}")
+    @Value("${paypal.client-id:}")
     String clientId;
-    @Value("${paypal.client-secret}")
+    @Value("${paypal.client-secret:}")
     String clientSecret;
-    //    @Value("${paypal.mode:sandbox}")
-    String mode = "sandbox";
-//    @Value("${paypal.http.timeout-ms:30000}")
-//    int timeoutMs;
-
-//    @Bean
-//    public PaypalServerSdkClient getPaypalServerSdkClient() {
-//        return new APICon.Builder()
-//                .loggingConfig(builder -> builder
-//                        .level(Level.DEBUG)
-//                        .requestConfig(logConfigBuilder -> logConfigBuilder.body(true))
-//                        .responseConfig(logConfigBuilder -> logConfigBuilder.headers(true)))
-//                .httpClientConfig(configBuilder -> configBuilder
-//                        .timeout(0))
-//                .clientCredentialsAuth(new ClientCredentialsAuthModel.Builder(
-//                        clientId,
-//                        clientSecret
-//                )
-//                        .build())
-//                .environment(Environment.SANDBOX)
-//                .build();
-//    }
-//    @Bean
-//    public PaypalServerSdkClient getPaypalServerSdkClient() {
-//       return new PaypalServerSdkClient.Builder()
-//                .loggingConfig(builder -> builder
-//                        .level(Level.DEBUG)
-//                        .requestConfig(logConfigBuilder -> logConfigBuilder.body(true))
-//                        .responseConfig(logConfigBuilder -> logConfigBuilder.headers(true)))
-//                .httpClientConfig(configBuilder -> configBuilder
-//                        .timeout(0))
-//                .clientCredentialsAuth(new ClientCredentialsAuthModel.Builder(
-//                        clientId,
-//                        clientSecret
-//                )
-//                        .build())
-//                .environment(Environment.SANDBOX)
-//                .build();
-//    }
-
-    //    @Bean
-//    public PayPalHttpClient payPalHttpClient() {
-//        PayPalEnvironment environment = mode.equalsIgnoreCase("live")
-//                ? new PayPalEnvironment.Live(clientId, clientSecret)
-//                : new PayPalEnvironment.Sandbox(clientId, clientSecret);
-//        // Initialize PayPal HTTP client with environment
-//        return new PayPalHttpClient(environment);
-//    }
+    @Value("${paypal.mode:sandbox}")
+    String mode;
     @Bean
     public PayPalHttpClient payPalHttpClient() {
         PayPalEnvironment env = "live".equalsIgnoreCase(mode)
@@ -87,11 +42,13 @@ public class EComBackConfiguration {
 
     @Bean
     public AmazonS3 amazonS3Client() {
-        BasicAWSCredentials creds = new BasicAWSCredentials(accessKey, secretKey);
-        return AmazonS3ClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(creds))
-                .withRegion(Regions.US_EAST_1)
-                .build();
+        AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard().withRegion(Regions.US_EAST_1);
+        if (!accessKey.isBlank() && !secretKey.isBlank()) {
+            builder.withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(accessKey, secretKey)));
+        } else {
+            builder.withCredentials(DefaultAWSCredentialsProviderChain.getInstance());
+        }
+        return builder.build();
     }
 
     @Bean

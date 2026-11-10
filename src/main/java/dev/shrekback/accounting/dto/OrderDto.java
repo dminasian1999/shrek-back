@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Getter
@@ -19,5 +20,8 @@ public class OrderDto {
     private Address shippingAddress;
     private String paymentMethod;
     private LocalDateTime dateCreated;
+    private BigDecimal totalAmount;
+    private BigDecimal shippingCost;
+    private String currencyCode;
 }
 

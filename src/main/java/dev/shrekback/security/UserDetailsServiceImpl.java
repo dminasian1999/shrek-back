@@ -21,7 +21,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		UserAccount userAccount = userAccountRepository.findById(username).orElseThrow(()->new UsernameNotFoundException(username+"UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUu"));
+		UserAccount userAccount = userAccountRepository.findById(username).orElseThrow(()->new UsernameNotFoundException("Invalid credentials"));
 		Collection<String> authorities = userAccount.getRoles().stream()
 													.map(r -> "ROLE_"+r.name())
 													.collect(Collectors.toList());

@@ -9,6 +9,7 @@ public class PaymentMethodDto {
     private String cardname;
     private String cardtype;
     private String cardno;
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String cvv;
     private String exdate;
 }

@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface OrderService {
      List<OrderDto> getAllOrders();
-     OrderDto checkOut(OrderDto orderDto);
+     OrderDto checkOut(String userId, OrderDto orderDto);
      List<OrderDto> getOrdersByUser(String userId);
-     OrderDto getOrdersById(String orderId);
+     OrderDto getOrdersById(String orderId, String userId, boolean administrator);
 }

@@ -5,6 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +25,11 @@ public class Order {
     private Address shippingAddress;
     private String paymentMethod;
     private LocalDateTime dateCreated;
+    private BigDecimal totalAmount;
+    private BigDecimal shippingCost;
+    private String currencyCode;
+    private String paypalOrderId;
+    private boolean inventoryReserved;
 
     public Order() {
         this.orderItems = new ArrayList<>();

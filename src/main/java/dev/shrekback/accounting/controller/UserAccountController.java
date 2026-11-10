@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.Base64;
 import java.util.List;
 
 @RestController
@@ -45,17 +44,13 @@ public class UserAccountController {
 
     // Login typically done via POST to /login (can be outside users resource)
     @PostMapping("/login")
-    public UserDto login(@RequestHeader("Authorization") String token) {
-        token = token.split(" ")[1];
-        System.out.println("con login");
-        String credentials = new String(Base64.getDecoder().decode(token));
-        return userAccountService.getUser(credentials.split(":")[0]);
+    public UserDto login(Principal principal) {
+        return userAccountService.getUser(principal.getName());
     }
 //-
     // Register new user
     @PostMapping("/register")
     public UserDto register(@RequestBody UserRegisterDto userRegisterDto) {
-        System.out.println("con register");
         return userAccountService.register(userRegisterDto);
     }
 
@@ -87,9 +82,14 @@ public class UserAccountController {
     // Change password for authenticated user
     @PutMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void changePassword(Principal principal, @RequestHeader("X-Password") String newPassword) {
+    public void changePassword(Principal principal,
+                               @RequestBody(required = false) ChangePasswordRequest request,
+                               @RequestHeader(value = "X-Password", required = false) String legacyPassword) {
+        String newPassword = request == null ? legacyPassword : request.newPassword();
         userAccountService.changePassword(principal.getName(), newPassword);
     }
+
+    public record ChangePasswordRequest(String newPassword) { }
 
     // Request password recovery link by username
     @GetMapping("/password/recovery/{username}")
