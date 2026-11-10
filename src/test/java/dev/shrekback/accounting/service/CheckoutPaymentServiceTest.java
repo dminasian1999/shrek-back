@@ -122,6 +122,23 @@ class CheckoutPaymentServiceTest {
     }
 
     @Test
+    void definitiveDeclineRestoresStockButUncertainFailureKeepsReservation() throws Exception {
+        when(gateway.captureOrder(eq("paypal-id"), anyString())).thenThrow(
+                new com.paypal.http.exceptions.HttpException("INSTRUMENT_DECLINED", 422, new com.paypal.http.Headers()));
+        assertThrows(ResponseStatusException.class, () -> service.capturePayment("paypal-id", "owner"));
+        var updates = org.mockito.ArgumentCaptor.forClass(UpdateDefinition.class);
+        verify(mongo, times(2)).updateFirst(any(Query.class), updates.capture(), eq(Post.class));
+        assertEquals(-2, ((org.bson.Document) updates.getAllValues().get(0).getUpdateObject().get("$inc")).get("sizeQuantities.$.quantity"));
+        assertEquals(2, ((org.bson.Document) updates.getAllValues().get(1).getUpdateObject().get("$inc")).get("sizeQuantities.$.quantity"));
+        verify(orders, never()).save(any());
+
+        clearInvocations(mongo);
+        doThrow(new java.io.IOException("timeout")).when(gateway).captureOrder(eq("paypal-id"), anyString());
+        assertThrows(ResponseStatusException.class, () -> service.capturePayment("paypal-id", "owner"));
+        verify(mongo, times(1)).updateFirst(any(Query.class), any(UpdateDefinition.class), eq(Post.class));
+    }
+
+    @Test
     void paymentsDisabledByDefault() {
         ReflectionTestUtils.setField(service, "paymentsEnabled", false);
         var failure = assertThrows(ResponseStatusException.class, () -> service.capturePayment("paypal-id", "owner"));
